@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 //        std::cout << "Usage: lsd_opencv_example imageName" << std::endl;
 //        return -1;
 //    }
-    cv::Mat src = cv::imread("../thirdparty/LSD/images/test.jpg", CV_LOAD_IMAGE_COLOR);
+    cv::Mat src = cv::imread("../test/test_line_feature/desk.png", CV_LOAD_IMAGE_COLOR);
     cv::Mat tmp, src_gray;
     cv::cvtColor(src, tmp, CV_RGB2GRAY);
     tmp.convertTo(src_gray, CV_64FC1);
@@ -26,8 +26,11 @@ int main(int argc, char **argv)
     int cols  = src_gray.cols;
     int rows = src_gray.rows;
 
+    // allocate the new memory to store the image
     image_double image = new_image_double(cols, rows);
     image->data = src_gray.ptr<double>(0);
+
+    // use the lsd algorithm to detect the line feature
     ntuple_list ntl = lsd(image);
 
     cv::Mat lsd = cv::Mat::zeros(rows, cols, CV_8UC1);
@@ -38,7 +41,8 @@ int main(int argc, char **argv)
         pt1.y = int(ntl->values[1 + j * ntl->dim]);
         pt2.x = int(ntl->values[2 + j * ntl->dim]);
         pt2.y = int(ntl->values[3 + j * ntl->dim]);
-        int width = int(ntl->values[4 + j * ntl->dim]);
+//        int width = int(ntl->values[4 + j * ntl->dim]);
+        int width = 1;
         cv::line(lsd, pt1, pt2, cv::Scalar(255), width, CV_AA);
     }
     free_ntuple_list(ntl);

@@ -8,22 +8,38 @@ LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 
 set(OpenCV_DIR "/home/rain/workspace/library/opencv-3.2.0/install/share/OpenCV")
 
-find_package(OpenCV REQUIRED)
-include_directories( ${Opencv_INCLUDE_DIRS} )
+find_package(OpenCV 3 REQUIRED)
+find_package(Glog REQUIRED)
 
-include_directories("/usr/include/eigen3")
+include_directories("/usr/include/eigen3/")
+
+include_directories(
+    include
+    ${Opencv_INCLUDE_DIRS}
+    ${CERES_INCLUDE_DIRS}
+    ${Pangolin_INCLUDE_DIRS}
+    BEFORE ${GLOG_INCLUDE_DIRS}
+)
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/LSD/include)
+include_directories(${PROJECT_SOURCE_DIR}/thirdparty/line_descriptor/include)
 
 add_library(${PROJECT_NAME} SHARED
     src/Camera.cpp
-)
+    src/LineFeature.cpp
+    src/Config.cpp)
 
 target_link_libraries(${PROJECT_NAME}
-    ${PROJECT_SOURCE_DIR}/thirdparty/LSD/lib/liblsd.so
     ${OpenCV_LIBRARIES}
-
+    ${PROJECT_SOURCE_DIR}/thirdparty/LSD/lib/liblsd.so
+    ${PROJECT_SOURCE_DIR}/thirdparty/line_descriptor/lib/liblinedesc.so
 )
 
-add_executable(test_lsd test/test_line_feature/test_lsd.cpp)
+add_executable(test_lsd test/test_line_feature/test_lsd.cpp )
 target_link_libraries(test_lsd ${PROJECT_NAME})
+
+add_executable(test_opencv_lsd test/test_line_feature/test_opencv_lsd.cpp )
+target_link_libraries(test_opencv_lsd ${PROJECT_NAME})
+
+add_executable(test_line_match test/test_line_match/test_line_match.cpp)
+target_link_libraries(test_line_match ${PROJECT_NAME})
