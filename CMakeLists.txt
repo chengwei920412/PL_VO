@@ -27,7 +27,8 @@ include_directories(${PROJECT_SOURCE_DIR}/thirdparty/line_descriptor/include)
 add_library(${PROJECT_NAME} SHARED
     src/Camera.cpp
     src/LineFeature.cpp
-    src/Config.cpp)
+    src/Config.cpp
+    src/Converter.cpp)
 
 target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBRARIES}
@@ -38,8 +39,11 @@ target_link_libraries(${PROJECT_NAME}
 add_executable(test_lsd test/test_line_feature/test_lsd.cpp )
 target_link_libraries(test_lsd ${PROJECT_NAME})
 
-add_executable(test_opencv_lsd test/test_line_feature/test_opencv_lsd.cpp )
+add_executable(test_opencv_lsd test/test_line_feature/test_opencv_lsd.cpp test/test_converter.cpp)
 target_link_libraries(test_opencv_lsd ${PROJECT_NAME})
 
 add_executable(test_line_match test/test_line_match/test_line_match.cpp)
 target_link_libraries(test_line_match ${PROJECT_NAME})
+
+add_executable(test_converter test/test_converter.cpp)
+target_link_libraries(test_converter ${PROJECT_NAME})

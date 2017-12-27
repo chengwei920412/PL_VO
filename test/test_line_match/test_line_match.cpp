@@ -40,6 +40,7 @@ int main(int argc, char** argv)
     double minLinelength = PL_VO::Config::minLineLength() * 480 ;
 
     PL_VO::TicToc tictoc;
+    PL_VO::TicToc tictoc2;
 
     vector<cv::line_descriptor::KeyLine> vkeylines1;
     cv::Mat linedesc1;
@@ -48,6 +49,8 @@ int main(int argc, char** argv)
 
     pLineFeature->detectLinefeature(img1, vkeylines1, linedesc1,  minLinelength);
     pLineFeature->detectLinefeature(img2, vkeylines2, linedesc2,  minLinelength);
+
+    cout << "line feature detection times(ms): " << tictoc2.toc() << endl;
 
     cv::BFMatcher bfmatcher;
     vector<vector<cv::DMatch>> linematches12;
@@ -67,7 +70,7 @@ int main(int argc, char** argv)
         for (int i = 0; i < linedesc1.rows; i++)
         {
             double dist = matches[i].distance;
-            cout << "~" << dist << endl;
+            ///cout << "~" << dist << endl;
             if (dist < min_dist) min_dist = dist;
             if (dist > max_dist) max_dist = dist;
         }
@@ -83,7 +86,7 @@ int main(int argc, char** argv)
 
     cout << "matches: " << matches.size() << endl;
     cout << "good matches: " << goodmatches.size() << endl;
-    cout << "times(ms): " << tictoc.toc() << endl;
+    cout << "total times(ms): " << tictoc.toc() << endl;
 
     cv::Mat showimg, showimg2;
     std::vector<char> mask( matches.size(), 1 );

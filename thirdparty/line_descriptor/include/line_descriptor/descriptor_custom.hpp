@@ -195,7 +195,7 @@ class CV_EXPORTS BinaryDescriptor : public Algorithm
 
     int numOfOctave_;
 
-    /** the width of band; (default: 7) */
+    /**   */
 
     int widthOfBand_;
 
