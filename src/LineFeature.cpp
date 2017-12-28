@@ -2,6 +2,8 @@
 // Created by rain on 17-12-21.
 //
 
+#include <glog/logging.h>
+
 #include "LineFeature.h"
 #include "TicToc.h"
 
@@ -55,10 +57,86 @@ void LineFeature::detectLinefeature(const cv::Mat img, vector<cv::line_descripto
 }
 
 void LineFeature::matchLineFeatures(cv::BFMatcher *bfmatcher, cv::Mat linedesc1, cv::Mat linedesc2,
-                                    vector<vector<cv::DMatch>> &linematches12)
+                                    vector<vector<cv::DMatch>> &vlinematches12)
 {
-    bfmatcher->knnMatch(linedesc1, linedesc2, linematches12, 2);
+    bfmatcher->knnMatch(linedesc1, linedesc2, vlinematches12, 2);
 }
 
+vector<cv::DMatch> LineFeature::refineMatchesWithDistance(vector<cv::DMatch> &vlinematches12)
+{
+    vector<cv::DMatch> inliermatches;
+    double min_dist=10000, max_dist=0;
+
+    for (int i = 0; i < vlinematches12.size(); i++)
+    {
+        double dist = vlinematches12[i].distance;
+
+        if (dist < min_dist) min_dist = dist;
+        if (dist > max_dist) max_dist = dist;
+    }
+
+    for ( int i = 0; i < vlinematches12.size(); i++ )
+    {
+        if ( vlinematches12[i].distance <= max ( 2*min_dist, 35.0 ) )
+        {
+            inliermatches.push_back(vlinematches12[i]);
+        }
+    }
+
+    return inliermatches;
+}
+
+vector<cv::DMatch> LineFeature::refineMatchesWithKnn(vector<vector<cv::DMatch>> &vlinematches12)
+{
+    double nn12distth;
+
+    nn12distth = 45;
+
+    sort( vlinematches12.begin(), vlinematches12.end(), sort_descriptor_by_queryIdx() );
+
+    vector<cv::DMatch> vmatches;
+
+    for (int i = 0; i < vlinematches12.size(); i++)
+    {
+        double dist12 = vlinematches12[i][1].distance - vlinematches12[i][0].distance;
+
+        if (dist12 > nn12distth)
+            vmatches.push_back(vlinematches12[i][0]);
+    }
+
+    return vmatches;
+}
+
+vector<cv::DMatch> LineFeature::refineMatchesWithFundamental(const vector<cv::line_descriptor::KeyLine> &vqueryKeylines,
+                                                            const vector<cv::line_descriptor::KeyLine> &vtrainKeylines,
+                                                            float reprojectionth, const vector<cv::DMatch> &vmathes,
+                                                            cv::Mat &homography)
+{
+    CHECK(vmathes.size() > 8) << " the key lise's size must greater than eight ";
+
+    vector<cv::Point2f> vqueryPts;
+    vector<cv::Point2f> vtrainPts;
+    vector<uchar> vinliersMask(vmathes.size());
+
+    for (size_t i = 0; i < vmathes.size(); i++)
+    {
+        vqueryPts.emplace_back(cv::Point2f(vqueryKeylines[vmathes[i].queryIdx].startPointX,
+                                        vqueryKeylines[vmathes[i].queryIdx].startPointY));
+        vtrainPts.emplace_back(cv::Point2f(vtrainKeylines[vmathes[i].trainIdx].startPointX,
+                                        vtrainKeylines[vmathes[i].trainIdx].startPointY));
+    }
+
+    cv::findFundamentalMat(vtrainPts, vqueryPts, cv::FM_RANSAC, 5.0, 0.99, vinliersMask);
+
+    vector<cv::DMatch> vinliersMatch;
+
+    for (size_t i = 0; i < vinliersMask.size(); i++)
+    {
+        if (vinliersMask[i])
+            vinliersMatch.push_back(vmathes[i]);
+    }
+
+    return vinliersMatch;
+}
 
 }

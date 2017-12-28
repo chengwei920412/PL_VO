@@ -17,6 +17,8 @@ public:
 
     static Config& getInstance();
 
+    static double&  minRatio12P()        { return getInstance().min_ratio_12_p; }
+
     // lines detection and matching
     static int&     lsdNFeatures()       { return getInstance().lsd_nfeatures; }
     static int&     lsdRefine()          { return getInstance().lsd_refine; }
@@ -34,6 +36,9 @@ public:
     static double&  lineCovTh()          { return getInstance().line_cov_th; }
 
 private:
+
+    double min_ratio_12_p;
+
     // lines detection and matching
     int    lsd_nfeatures;
     int    lsd_refine;

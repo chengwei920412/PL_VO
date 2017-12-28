@@ -2,14 +2,12 @@
 // Created by rain on 17-12-21.
 //
 #include <iostream>
-#include <string>
+#include <glog/logging.h>
 #include "opencv2/core/core.hpp"
-#include "opencv2/core/utility.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include <line_descriptor_custom.hpp>
-#include <line_descriptor/descriptor_custom.hpp>
 
 #include "LineFeature.h"
 #include "TicToc.h"
@@ -18,6 +16,8 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
+    google::InitGoogleLogging(argv[0]);
+
     const string strDataSets("/home/rain/workspace/DataSets");
     const string strrgbimg("/rgbd_dataset_freiburg2_desk/rgb");
     const string strdepthimg("/rgbd_dataset_freiburg2_desk/depth");
@@ -53,51 +53,47 @@ int main(int argc, char** argv)
     cout << "line feature detection times(ms): " << tictoc2.toc() << endl;
 
     cv::BFMatcher bfmatcher;
-    vector<vector<cv::DMatch>> linematches12;
+    vector<vector<cv::DMatch>> vlinematches12;
 
-//    pLineFeature->matchLineFeatures(&bfmatcher, linedesc1, linedesc2, linematches12);
+    pLineFeature->matchLineFeatures(&bfmatcher, linedesc1, linedesc2, vlinematches12);
 
     cv::Ptr<cv::line_descriptor::BinaryDescriptorMatcher> bdm = cv::line_descriptor::BinaryDescriptorMatcher::createBinaryDescriptorMatcher();
 
     /* require match */
-    std::vector<cv::DMatch> matches;
-    std::vector<cv::DMatch> goodmatches;
+    vector<cv::DMatch> matches;
+    vector<cv::DMatch> distancematches;
     bdm->match(linedesc1, linedesc2, matches );
 
-    {
-        double min_dist=10000, max_dist=0;
+    cv::Mat homography;
+    vector<cv::DMatch> fundamentalmatches;
 
-        for (int i = 0; i < linedesc1.rows; i++)
-        {
-            double dist = matches[i].distance;
-            ///cout << "~" << dist << endl;
-            if (dist < min_dist) min_dist = dist;
-            if (dist > max_dist) max_dist = dist;
-        }
+    PL_VO::TicToc refinetictoc;
 
-        for ( int i = 0; i < linedesc1.rows; i++ )
-        {
-            if ( matches[i].distance <= max ( 2*min_dist, 35.0 ) )
-            {
-                goodmatches.push_back ( matches[i] );
-            }
-        }
-    }
+    fundamentalmatches = pLineFeature->refineMatchesWithFundamental(vkeylines1, vkeylines2, 0.0, matches, homography);
+
+    cout << "fundamental matrix refine the matches cost time(ms): " << refinetictoc.toc() << endl;
+
+    distancematches = pLineFeature->refineMatchesWithDistance(matches);
 
     cout << "matches: " << matches.size() << endl;
-    cout << "good matches: " << goodmatches.size() << endl;
+    cout << "good matches: " << distancematches.size() << endl;
+    cout << "fundamental matches: "<< fundamentalmatches.size() << endl;
     cout << "total times(ms): " << tictoc.toc() << endl;
 
-    cv::Mat showimg, showimg2;
+    cv::Mat showimg, showimg2, showimg3;
     std::vector<char> mask( matches.size(), 1 );
     cv::line_descriptor::drawLineMatches(img1, vkeylines1, img2, vkeylines2, matches, showimg, cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
                                          cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
 
-    cv::line_descriptor::drawLineMatches(img1, vkeylines1, img2, vkeylines2, goodmatches, showimg2, cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
+    cv::line_descriptor::drawLineMatches(img1, vkeylines1, img2, vkeylines2, distancematches, showimg2, cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
+                                         cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
+
+    cv::line_descriptor::drawLineMatches(img1, vkeylines1, img2, vkeylines2, fundamentalmatches, showimg3, cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
                                          cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
 
     cv::imshow(" ", showimg);
     cv::imshow("good match", showimg2);
+    cv::imshow("homography match", showimg3);
     cv::waitKey(0);
 
     return 0;

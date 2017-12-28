@@ -30,5 +30,4 @@ int main(int argv, char* argc[])
     cout << PL_VO::Converter::quatLeftproduct(q1)*PL_VO::Converter::quatRightproduct(q2) << endl;
     cout << "quaternion left product quaternion right" << endl;
     cout << PL_VO::Converter::quatRightproduct(q2)*PL_VO::Converter::quatLeftproduct(q1)<< endl;
-
 }

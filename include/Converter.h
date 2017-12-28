@@ -36,6 +36,8 @@ public:
     static Eigen::Vector3d toEuler(const Eigen::Quaterniond &q);
     static Eigen::Vector3d toEuler(const Eigen::Matrix3d &R);
 
+    static Eigen::Matrix3d skew(const Eigen::Vector3d &v);
+
     static Eigen::Matrix<double, 4, 4> quatLeftproduct(const Eigen::Quaterniond &q0);
     static Eigen::Matrix<double, 4, 4> quatRightproduct(const Eigen::Quaterniond &q0);
 

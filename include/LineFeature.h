@@ -6,8 +6,9 @@
 #define PL_VO_LINEFEATURE_H
 
 #include <vector>
-#include <opencv/cv.h>
+#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <opencv2/opencv.hpp>
 #include <line_descriptor_custom.hpp>
 #include <line_descriptor/descriptor_custom.hpp>
 
@@ -17,6 +18,29 @@ namespace PL_VO
 {
 
 using namespace std;
+
+
+struct compare_descriptor_by_NN_dist
+{
+    inline bool operator()(const vector<cv::DMatch>& a, const vector<cv::DMatch>& b){
+        return ( a[0].distance < b[0].distance );
+    }
+};
+
+//
+struct compare_descriptor_by_NN12_dist
+{
+    inline bool operator()(const vector<cv::DMatch>& a, const vector<cv::DMatch>& b){
+        return ( a[1].distance - a[0].distance > b[1].distance-b[0].distance );
+    }
+};
+
+struct sort_descriptor_by_queryIdx
+{
+    inline bool operator()(const vector<cv::DMatch>& a, const vector<cv::DMatch>& b){
+        return ( a[0].queryIdx < b[0].queryIdx );
+    }
+};
 
 class LineFeature
 {
@@ -29,7 +53,16 @@ public:
                            cv::Mat &linedesc, const double minLinelength);
 
     void matchLineFeatures(cv::BFMatcher *bfmatcher, cv::Mat linedesc1, cv::Mat linedesc2,
-                            vector<vector<cv::DMatch>> &linematches12);
+                            vector<vector<cv::DMatch>> &vlinematches12);
+
+    vector<cv::DMatch> refineMatchesWithDistance(vector<cv::DMatch> &vlinematches12);
+
+    vector<cv::DMatch> refineMatchesWithKnn(vector<vector<cv::DMatch>> &vlinematches12);
+
+    vector<cv::DMatch> refineMatchesWithFundamental(const vector<cv::line_descriptor::KeyLine> &vqueryKeylines,
+                                                   const vector<cv::line_descriptor::KeyLine> &vtrainKeylines,
+                                                   float reprojectionth, const vector<cv::DMatch> &vmathes,
+                                                   cv::Mat &homography);
 
 
 }; // class LineFeature

@@ -162,6 +162,18 @@ Eigen::Vector3d Converter::toEuler(const Eigen::Matrix3d &R)
     return euler;
 }
 
+Eigen::Matrix3d Converter::skew(const Eigen::Vector3d &v)
+{
+    Eigen::Matrix3d m;
+    m.setZero();
+
+    m <<    0, -v(2),  v(1),
+         v(2),     0, -v(0),
+        -v(1),  v(0),     0;
+
+    return m;
+}
+
 Eigen::Matrix<double, 4, 4> Converter::quatLeftproduct(const Eigen::Quaterniond &q0)
 {
     Eigen::Matrix<double, 4, 4> qL;

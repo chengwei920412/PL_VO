@@ -10,6 +10,7 @@ set(OpenCV_DIR "/home/rain/workspace/library/opencv-3.2.0/install/share/OpenCV")
 
 find_package(OpenCV 3 REQUIRED)
 find_package(Glog REQUIRED)
+find_package(Ceres REQUIRED)
 
 include_directories("/usr/include/eigen3/")
 
@@ -32,6 +33,7 @@ add_library(${PROJECT_NAME} SHARED
 
 target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBRARIES}
+    ${CERES_LIBRARIES}
     ${PROJECT_SOURCE_DIR}/thirdparty/LSD/lib/liblsd.so
     ${PROJECT_SOURCE_DIR}/thirdparty/line_descriptor/lib/liblinedesc.so
 )
@@ -39,7 +41,7 @@ target_link_libraries(${PROJECT_NAME}
 add_executable(test_lsd test/test_line_feature/test_lsd.cpp )
 target_link_libraries(test_lsd ${PROJECT_NAME})
 
-add_executable(test_opencv_lsd test/test_line_feature/test_opencv_lsd.cpp test/test_converter.cpp)
+add_executable(test_opencv_lsd test/test_line_feature/test_opencv_lsd.cpp)
 target_link_libraries(test_opencv_lsd ${PROJECT_NAME})
 
 add_executable(test_line_match test/test_line_match/test_line_match.cpp)
