@@ -71,17 +71,17 @@ int main(int argc, char** argv)
 
     fundamentalmatches = pLineFeature->refineMatchesWithFundamental(vkeylines1, vkeylines2, 0.0, matches, homography);
 
-    cout << "fundamental matrix refine the matches cost time(ms): " << refinetictoc.toc() << endl;
+    cout << "fundamental matrix refine the matches costs time(ms): " << refinetictoc.toc() << endl;
 
     distancematches = pLineFeature->refineMatchesWithDistance(matches);
 
     cout << "matches: " << matches.size() << endl;
-    cout << "good matches: " << distancematches.size() << endl;
+    cout << "distance matches: " << distancematches.size() << endl;
     cout << "fundamental matches: "<< fundamentalmatches.size() << endl;
     cout << "total times(ms): " << tictoc.toc() << endl;
 
     cv::Mat showimg, showimg2, showimg3;
-    std::vector<char> mask( matches.size(), 1 );
+    std::vector<char> mask(matches.size(), 1);
     cv::line_descriptor::drawLineMatches(img1, vkeylines1, img2, vkeylines2, matches, showimg, cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
                                          cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
 

@@ -139,4 +139,4 @@ vector<cv::DMatch> LineFeature::refineMatchesWithFundamental(const vector<cv::li
     return vinliersMatch;
 }
 
-}
+} // namespace PL_VO

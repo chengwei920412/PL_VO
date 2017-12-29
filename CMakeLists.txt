@@ -29,7 +29,7 @@ add_library(${PROJECT_NAME} SHARED
     src/Camera.cpp
     src/LineFeature.cpp
     src/Config.cpp
-    src/Converter.cpp)
+    src/Converter.cpp src/PointFeature.cpp include/PointFeature.h)
 
 target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBRARIES}
@@ -37,6 +37,9 @@ target_link_libraries(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/thirdparty/LSD/lib/liblsd.so
     ${PROJECT_SOURCE_DIR}/thirdparty/line_descriptor/lib/liblinedesc.so
 )
+
+add_executable(rgbd_tum Example/rgbd_tum.cpp)
+target_link_libraries(rgbd_tum ${PROJECT_NAME})
 
 add_executable(test_lsd test/test_line_feature/test_lsd.cpp )
 target_link_libraries(test_lsd ${PROJECT_NAME})
