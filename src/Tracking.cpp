@@ -36,7 +36,7 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
 
     mpcurrentFrame = new Frame(timeStamps, mpcamera, mplineFeature, mppointFeature);
 
-     mpcurrentFrame->detectFeature(imagergb, imDepth);
+    mpcurrentFrame->detectFeature(imagergb, imDepth);
 
     if (!mlastimagergb.empty())
     {
@@ -61,7 +61,7 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
                                              vlineRefineMatches, showimg,  cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
                                              cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
         cv::imshow(" ", showimg);
-        cv::waitKey(0);
+        cv::waitKey(5);
     }
 
     mplastFrame = new Frame(*mpcurrentFrame);

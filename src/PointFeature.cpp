@@ -31,6 +31,10 @@ void PointFeature::detectPointfeature(const cv::Mat &img, vector<cv::KeyPoint> &
 
         descriptor->compute(img, vkeypoints, pointdesc);
     }
+    else
+    {
+        descriptor->compute(img, vkeypoints, pointdesc);
+    }
 }
 
 void PointFeature::matchPointFeatures(const cv::Mat &pointdesc1, const cv::Mat &pointdesc2, vector<cv::DMatch> &vpointmatches12)

@@ -35,6 +35,7 @@ void LineFeature::detectLinefeature(const cv::Mat img, vector<cv::line_descripto
     // there also can use the mask to set the dected aera
     lsd->detect(img, vkeylines, (int)Config::lsdScale(), 1, opts);
 
+    cout << "keyline: " << vkeylines.size() << endl;
     cout << "lsd detection times(ms): " << tictoc1.toc() << endl;
 
     TicToc tictoc2;
@@ -52,6 +53,10 @@ void LineFeature::detectLinefeature(const cv::Mat img, vector<cv::line_descripto
             vkeylines[i].class_id = i;
         }
 
+        lbd->compute(img, vkeylines, linedesc);
+    }
+    else
+    {
         lbd->compute(img, vkeylines, linedesc);
     }
 

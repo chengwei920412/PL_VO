@@ -149,7 +149,6 @@ void BinaryDescriptor::setWidthOfBand( int width )
   double u = ( params.widthOfBand_ * 3 - 1 ) / 2;
 
   /* compute exponential part of F_l */
-  // 全局比重系数
   double sigma = ( params.widthOfBand_ * 2 + 1 ) / 2;  // (widthOfBand_*2+1)/2;
   double invsigma2 = -1 / ( 2 * sigma * sigma );
 
@@ -1069,25 +1068,20 @@ int BinaryDescriptor::computeLBD( ScaleLines &keyLines, bool useDetectionData )
   short sameLineSize;
   short octaveCount;
   OctaveSingleLine *pSingleLine;
-
   /* loop over list of LineVec */
-  // 遍历所有的线特征
   for ( short lineIDInScaleVec = 0; lineIDInScaleVec < numOfFinalLine; lineIDInScaleVec++ )
   {
     sameLineSize = (short) ( keyLines[lineIDInScaleVec].size() );
     /* loop over current LineVec's lines */
-    // 遍历当前线特征的金字塔图像中对应的不同特征
     for ( short lineIDInSameLine = 0; lineIDInSameLine < sameLineSize; lineIDInSameLine++ )
     {
       /* get a line in current LineVec and its original ID in its octave */
-      // 当前特征点
       pSingleLine = & ( keyLines[lineIDInScaleVec][lineIDInSameLine] );
       octaveCount = (short) pSingleLine->octaveCount;
 
       if( useDetectionData )
       {
         /* retrieve associated dxImg and dyImg */
-        // dxImg是通过对原图像做sobel算子得到的，dyImg也是同样道理
         pdxImg = edLineVec_[octaveCount]->dxImg_.ptr<short>();
         pdyImg = edLineVec_[octaveCount]->dyImg_.ptr<short>();
 
@@ -1096,6 +1090,7 @@ int BinaryDescriptor::computeLBD( ScaleLines &keyLines, bool useDetectionData )
         imageWidth = realWidth - 1;
         imageHeight = (short) ( edLineVec_[octaveCount]->imageHeight - 1 );
       }
+
       else
       {
         /* retrieve associated dxImg and dyImg */
@@ -1119,12 +1114,10 @@ int BinaryDescriptor::computeLBD( ScaleLines &keyLines, bool useDetectionData )
       memset( ngdO2BandSum, 0, numOfBitsBand );
 
       /* get length of line and its half */
-      // 当前线特征的长度
       lengthOfLSP = (short) keyLines[lineIDInScaleVec][lineIDInSameLine].numOfPixels;
       halfWidth = ( lengthOfLSP - 1 ) / 2;
 
       /* get middlepoint of line */
-      // 得到当前线特征的中心位置
       lineMiddlePointX = (float) ( 0.5 * ( pSingleLine->sPointInOctaveX + pSingleLine->ePointInOctaveX ) );
       lineMiddlePointY = (float) ( 0.5 * ( pSingleLine->sPointInOctaveY + pSingleLine->ePointInOctaveY ) );
 
@@ -1134,7 +1127,6 @@ int BinaryDescriptor::computeLBD( ScaleLines &keyLines, bool useDetectionData )
 
       /* get the vector representing original image reference system after rotation to aligh with
        line's direction */
-      // 将之前提取好的线特征的方向分为水平方向和垂直方向的
       dL[0] = cos( pSingleLine->direction );
       dL[1] = sin( pSingleLine->direction );
 
@@ -1147,9 +1139,6 @@ int BinaryDescriptor::computeLBD( ScaleLines &keyLines, bool useDetectionData )
       sCorY0 = -dL[1] * halfWidth - dL[0] * halfHeight + lineMiddlePointY;
 
       /* BIAS::Matrix<float> gDLMat(heightOfLSP,lengthOfLSP) */
-      // 遍历线特征上的每一个LSR级的像素点
-      // heightOfLSP，LSP的高度，遍历高度
-      // heightOfLSP = ( params.widthOfBand_ * NUM_OF_BANDS )
       for ( short hID = 0; hID < heightOfLSP; hID++ )
       {
         /*initialization */
@@ -1161,10 +1150,8 @@ int BinaryDescriptor::computeLBD( ScaleLines &keyLines, bool useDetectionData )
         pgdORowSum = 0;
         ngdORowSum = 0;
 
-        // 遍历线特征的长度
         for ( short wID = 0; wID < lengthOfLSP; wID++ )
         {
-          // 图像坐标系中特征的位置
           tempCor = (short) round( sCorX );
           xCor = ( tempCor < 0 ) ? 0 : ( tempCor > imageWidth ) ? imageWidth : tempCor;
           tempCor = (short) round( sCorY );
@@ -1174,12 +1161,8 @@ int BinaryDescriptor::computeLBD( ScaleLines &keyLines, bool useDetectionData )
            * the line direction and clockwise orthogonal direction.*/
           dx = pdxImg[yCor * realWidth + xCor];
           dy = pdyImg[yCor * realWidth + xCor];
-
-          //
           gDL = dx * dL[0] + dy * dL[1];
           gDO = dx * dO[0] + dy * dO[1];
-
-          // 统计各个像素的梯度
           if( gDL > 0 )
           {
             pgdLRowSum += gDL;
@@ -1199,8 +1182,7 @@ int BinaryDescriptor::computeLBD( ScaleLines &keyLines, bool useDetectionData )
           sCorX += dL[0];
           sCorY += dL[1];
           /* gDLMat[hID][wID] = gDL; */
-        } // for ( short wID = 0; wID < lengthOfLSP; wID++ )
-
+        }
         sCorX0 -= dL[1];
         sCorY0 += dL[0];
         coefInGaussion = (float) gaussCoefG_[hID];
@@ -1216,8 +1198,6 @@ int BinaryDescriptor::computeLBD( ScaleLines &keyLines, bool useDetectionData )
         /* compute {g_dL |g_dL>0 }, {g_dL |g_dL<0 },
          {g_dO |g_dO>0 }, {g_dO |g_dO<0 } of each band in the line support region
          first, current row belong to current band */
-        // 通过band带的数量来决定决定每一个band带的长度，也就是将每一个线特征等分
-        // widthOfBand_: the width of band; (default: 7)
         bandID = (short) ( hID / params.widthOfBand_ );
         coefInGaussion = (float) ( gaussCoefL_[hID % params.widthOfBand_ + params.widthOfBand_] );
         pgdLBandSum[bandID] += coefInGaussion * pgdLRowSum;
@@ -1258,7 +1238,6 @@ int BinaryDescriptor::computeLBD( ScaleLines &keyLines, bool useDetectionData )
           pgdO2BandSum[bandID] += coefInGaussion * coefInGaussion * pgdO2RowSum;
           ngdO2BandSum[bandID] += coefInGaussion * coefInGaussion * ngdO2RowSum;
         }
-
       }
       /* gDLMat.Save("gDLMat.txt");
        return 0; */
