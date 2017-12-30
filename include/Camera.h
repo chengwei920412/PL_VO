@@ -86,8 +86,8 @@ inline Eigen::Matrix3d Camera::GetCameraIntrinsic() const
 {
     Eigen::Matrix3d intrinsic;
     intrinsic << mfx,  0., mcx,
-            0., mfy, mcy,
-            0.,  0.,  1.;
+                  0., mfy, mcy,
+                  0.,  0.,  1.;
 
     return intrinsic;
 }

@@ -52,11 +52,6 @@ int main(int argc, char** argv)
 
     cout << "line feature detection times(ms): " << tictoc2.toc() << endl;
 
-    cv::BFMatcher bfmatcher;
-    vector<vector<cv::DMatch>> vlinematches12;
-
-    pLineFeature->matchLineFeatures(&bfmatcher, linedesc1, linedesc2, vlinematches12);
-
     cv::Ptr<cv::line_descriptor::BinaryDescriptorMatcher> bdm = cv::line_descriptor::BinaryDescriptorMatcher::createBinaryDescriptorMatcher();
 
     /* require match */
@@ -69,7 +64,7 @@ int main(int argc, char** argv)
 
     PL_VO::TicToc refinetictoc;
 
-    fundamentalmatches = pLineFeature->refineMatchesWithFundamental(vkeylines1, vkeylines2, 0.0, matches, homography);
+    fundamentalmatches = pLineFeature->refineMatchesWithFundamental(vkeylines1, vkeylines2, matches);
 
     cout << "fundamental matrix refine the matches costs time(ms): " << refinetictoc.toc() << endl;
 

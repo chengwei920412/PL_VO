@@ -10,6 +10,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgcodecs/imgcodecs_c.h>
 #include <opencv2/highgui/highgui.hpp>
+#include "System.h"
 
 
 using namespace std;
@@ -52,17 +53,20 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    PL_VO::System vo(strSettingsFile);
+
     cv::Mat imRGB, imDepth;
     for (size_t i = 0; i < imagesize; i++)
     {
         imRGB = cv::imread(strSequenceFilename +"/"+ vstrImageFilenamesRGB[i], CV_LOAD_IMAGE_UNCHANGED);
         imDepth = cv::imread(strSequenceFilename +"/"+ vstrImageFilenamesD[i], CV_LOAD_IMAGE_UNCHANGED);
-        double imagetimestams = vTimestamps[i];
+        double imagetimestamps = vTimestamps[i];
 
         if (imRGB.empty())
         {
             cerr << "failed to load image file " << strSequenceFilename +"/"+ vstrImageFilenamesRGB[i] << endl;
         }
+        vo.TrackRGBD(imRGB, imDepth, imagetimestamps);
     }
 
 }

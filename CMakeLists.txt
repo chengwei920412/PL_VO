@@ -29,7 +29,11 @@ add_library(${PROJECT_NAME} SHARED
     src/Camera.cpp
     src/LineFeature.cpp
     src/Config.cpp
-    src/Converter.cpp src/PointFeature.cpp include/PointFeature.h)
+    src/Converter.cpp
+    src/PointFeature.cpp
+    src/Frame.cpp
+    src/Tracking.cpp
+    src/System.cpp)
 
 target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBRARIES}

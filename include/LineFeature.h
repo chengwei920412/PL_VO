@@ -52,19 +52,15 @@ public:
     void detectLinefeature(const cv::Mat img, vector<cv::line_descriptor::KeyLine> &vkeylines,
                            cv::Mat &linedesc, const double minLinelength);
 
-    void matchLineFeatures(cv::BFMatcher *bfmatcher, cv::Mat linedesc1, cv::Mat linedesc2,
-                            vector<vector<cv::DMatch>> &vlinematches12);
+    void matchLineFeatures(const cv::Mat &linedesc1, const cv::Mat &linedesc2, vector<cv::DMatch> &vlinematches12);
 
     vector<cv::DMatch> refineMatchesWithDistance(vector<cv::DMatch> &vlinematches12);
 
     vector<cv::DMatch> refineMatchesWithKnn(vector<vector<cv::DMatch>> &vlinematches12);
 
     vector<cv::DMatch> refineMatchesWithFundamental(const vector<cv::line_descriptor::KeyLine> &vqueryKeylines,
-                                                   const vector<cv::line_descriptor::KeyLine> &vtrainKeylines,
-                                                   float reprojectionth, const vector<cv::DMatch> &vmathes,
-                                                   cv::Mat &homography);
-
-
+                                                    const vector<cv::line_descriptor::KeyLine> &vtrainKeylines,
+                                                    const vector<cv::DMatch> &vmathes);
 }; // class LineFeature
 
 } // namesapce PL_VO

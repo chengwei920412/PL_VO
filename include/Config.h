@@ -17,7 +17,14 @@ public:
 
     static Config& getInstance();
 
-    static double&  minRatio12P()        { return getInstance().min_ratio_12_p; }
+    // flag
+    static bool&    hasPoints()          { return getInstance().has_points; }
+    static bool&    hasLines()           { return getInstance().has_lines; }
+    static bool&    lrInParallel()       { return getInstance().lr_in_parallel; }
+    static bool&    plInParallel()       { return getInstance().pl_in_parallel; }
+
+    // ORB
+    static int&     orbNFeatures()       { return getInstance().orb_nfeatures; }
 
     // lines detection and matching
     static int&     lsdNFeatures()       { return getInstance().lsd_nfeatures; }
@@ -38,6 +45,16 @@ public:
 private:
 
     double min_ratio_12_p;
+
+    // flags
+    bool has_points;
+    bool has_lines;
+    bool lr_in_parallel;
+    bool pl_in_parallel;
+    bool best_lr_matches;
+    bool adaptative_fast;
+
+    int orb_nfeatures;
 
     // lines detection and matching
     int    lsd_nfeatures;
