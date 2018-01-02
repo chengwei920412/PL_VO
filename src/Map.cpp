@@ -7,5 +7,9 @@
 namespace PL_VO
 {
 
+Map::Map()
+{
+}
+
 
 } // namespace PL_VO

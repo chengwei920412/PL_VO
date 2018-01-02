@@ -20,6 +20,11 @@ Tracking::~Tracking()
     delete(mppointFeature);
 }
 
+void Tracking::SetMap(Map *pMap)
+{
+    mpMap = pMap;
+}
+
 void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &timeStamps)
 {
     mimageGray = imagergb.clone();
@@ -87,7 +92,6 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
         cv::solvePnPRansac(vpts3d, vpts2d, Converter::toCvMat(mpcamera->GetCameraIntrinsic()), cv::Mat(),
                            rvec, tvec, false, 100, 4.0, 0.99, inliers);
 
-//        cv::solvePnP(vpts3d, vpts2d, Converter::toCvMat(mpcamera->GetCameraIntrinsic()), cv::Mat(), rvec, tvec, false);
 
         mpcurrentFrame->Tcw = Sophus::SE3(Sophus::SO3(rvec.at<double>(0,0), rvec.at<double>(1,0), rvec.at<double>(2,0)),
                                           Converter::toVector3d(tvec));
@@ -105,6 +109,8 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
         cv::imshow(" ", showimg);
         cv::waitKey(5);
     }
+
+    mpMap->mlFrames.push_back(mpcurrentFrame);
 
     mplastFrame = new Frame(*mpcurrentFrame);
     mlastimageGrays = mimageGray.clone();

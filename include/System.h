@@ -17,6 +17,7 @@ namespace PL_VO
 
 class Camera;
 class Tracking;
+class Map;
 
 class System
 {
@@ -29,9 +30,12 @@ public:
 
     Eigen::Matrix<double, 7, 1> TrackRGBD(const cv::Mat &imagergb, const cv::Mat &imagedepth, const double &timeStamps);
 
+    void SaveTrajectory(const string &filename);
+
 private:
     Camera *mpCamera;
     Tracking *mpTracking;
+    Map *mpMap;
 
 };// class System
 

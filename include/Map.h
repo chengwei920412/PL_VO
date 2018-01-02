@@ -43,6 +43,10 @@ public:
 
 class Map
 {
+public:
+    Map();
+
+    list<Frame*> mlFrames;
 
 }; // class Map
 

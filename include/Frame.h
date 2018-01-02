@@ -47,6 +47,8 @@ public:
 
     double findDepth(const cv::KeyPoint &kp, const cv::Mat &imagedepth);
 
+    double mtimeStamp;
+
     Sophus::SE3 Tcw;
     Sophus::SE3 Twc;
 
@@ -64,7 +66,6 @@ private:
 
     static size_t gCount;
     size_t mID;
-    double mtimeStamp;
 
 
 }; // class Frame

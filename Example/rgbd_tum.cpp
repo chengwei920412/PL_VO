@@ -15,8 +15,7 @@
 
 using namespace std;
 
-// ./Examples/Monocular/mono_euroc Vocabulary/ORBvoc.txt Examples/Monocular/EuRoC.yaml
-// PATH_TO_SEQUENCE_FOLDER/mav0/cam0/data Examples/Monocular/EuRoC_TimeStamps/SEQUENCE.txt
+
 void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
                 vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
 
@@ -68,6 +67,8 @@ int main(int argc, char **argv)
         }
         vo.TrackRGBD(imRGB, imDepth, imagetimestamps);
     }
+
+    vo.SaveTrajectory("tum_trajectory.txt");
 
 }
 

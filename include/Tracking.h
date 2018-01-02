@@ -28,6 +28,7 @@ class Camera;
 class Frame;
 class LineFeature;
 class PointFeature;
+class Map;
 
 class Tracking
 {
@@ -40,7 +41,10 @@ public:
 
     void Track(const cv::Mat &imagegray, const cv::Mat &imD, const double &timeStamps);
 
-    bool TrackRefFrame(Frame *plastFrame, Frame *pcurrentFrame);
+    void SetMap(Map *pMap);
+
+    bool TrackRefFrame(Frame *plastFrame, Frame *pcurrentFrame, const cv::Mat &imagedepth,
+                       const vector<cv::DMatch> vpointMatches);
 
 private:
 
@@ -49,6 +53,7 @@ private:
     Frame *mplastFrame;
     LineFeature *mplineFeature;
     PointFeature *mppointFeature;
+    Map *mpMap;
 
     cv::Mat mimageGray;
     cv::Mat mimagergb;

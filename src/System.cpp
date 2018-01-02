@@ -11,6 +11,9 @@ System::System(const string &strSettingsFile)
 {
     mpCamera = new Camera(strSettingsFile);
     mpTracking = new Tracking(mpCamera);
+    mpMap = new(Map);
+
+    mpTracking->SetMap(mpMap);
 }
 
 System::~System()
@@ -21,6 +24,23 @@ System::~System()
 Eigen::Matrix<double, 7, 1>  System::TrackRGBD(const cv::Mat &imagergb, const cv::Mat &imagedepth, const double &timeStamps)
 {
     mpTracking->Track(imagergb, imagedepth, timeStamps);
+}
+
+void System::SaveTrajectory(const string &filename)
+{
+    cout << "save the camera trajectory to " << filename << endl;
+    ofstream ofstreamer;
+
+    ofstreamer.open(filename.c_str());
+
+    ofstreamer << fixed;
+
+    for (auto frame: mpMap->mlFrames)
+    {
+        ofstreamer << setprecision(6) << frame->mtimeStamp << " " << frame->Tcw.translation().transpose() << endl;
+    }
+
+    ofstreamer.close();
 }
 
 } // namespace PL_VO
