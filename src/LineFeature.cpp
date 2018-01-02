@@ -61,10 +61,6 @@ void LineFeature::detectLinefeature(const cv::Mat img, vector<cv::line_descripto
     }
 
     cout << "lbd descriptor times(ms): " << tictoc2.toc() << endl;
-
-    CHECK(vkeylines.size() > 8) << "the size of the key line detection is less than eight " << endl;
-    CHECK(linedesc.rows > 8) << "the size of the line descriptors is less than eight " << endl;
-
 }
 
 void LineFeature::matchLineFeatures(const cv::Mat &linedesc1, const cv::Mat &linedesc2, vector<cv::DMatch> &vlinematches12)
@@ -73,7 +69,6 @@ void LineFeature::matchLineFeatures(const cv::Mat &linedesc1, const cv::Mat &lin
             cv::line_descriptor::BinaryDescriptorMatcher::createBinaryDescriptorMatcher();
     bdm->match(linedesc1, linedesc2, vlinematches12 );
 
-    CHECK(vlinematches12.size() > 8) << "the line feature match's size is less than eight " << endl;
 }
 
 vector<cv::DMatch> LineFeature::refineMatchesWithDistance(vector<cv::DMatch> &vlinematches12)
@@ -125,7 +120,6 @@ vector<cv::DMatch> LineFeature::refineMatchesWithFundamental(const vector<cv::li
                                                              const vector<cv::line_descriptor::KeyLine> &vtrainKeylines,
                                                              const vector<cv::DMatch> &vmathes)
 {
-    CHECK(vmathes.size() > 8) << " the keyline's size is less than eight ";
 
     vector<cv::Point2f> vqueryPts;
     vector<cv::Point2f> vtrainPts;

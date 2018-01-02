@@ -76,7 +76,6 @@ vector<cv::DMatch> PointFeature::refineMatchesWithFundamental(const vector<cv::K
                                                               const vector<cv::KeyPoint> &vKeyPoints2,
                                                               const vector<cv::DMatch> &vmathes)
 {
-    cout << vmathes.size() << endl;
     CHECK(vmathes.size() > 8) << " the keypoint's size is less than eight ";
 
     vector<cv::Point2f> vpoint2d1;

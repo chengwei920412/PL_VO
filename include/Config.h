@@ -17,6 +17,8 @@ public:
 
     static Config& getInstance();
 
+    static int& depthscale() {return getInstance().depth_scale;}
+
     // flag
     static bool&    hasPoints()          { return getInstance().has_points; }
     static bool&    hasLines()           { return getInstance().has_lines; }
@@ -44,7 +46,7 @@ public:
 
 private:
 
-    double min_ratio_12_p;
+    int depth_scale;
 
     // flags
     bool has_points;

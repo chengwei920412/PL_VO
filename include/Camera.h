@@ -37,6 +37,7 @@ public:
     int mFeatureShow;
     double mImageGridHeight;
     double mImageGridWidth;
+    double mdepthscale;
 
 public:
 

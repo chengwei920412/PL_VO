@@ -35,6 +35,8 @@ Camera::Camera(const string &strSettingsFile)
     mnumFeatures = fsSettings["ORBextractor.numFeatures"];
     minDist = fsSettings["ORBextractor.minDist"];
     mFeatureShow = fsSettings["Viewer.FeatureShow"];
+
+    mdepthscale = fsSettings["Camera.depth_scale"];
 }
 
 Camera::Camera()

@@ -40,8 +40,7 @@ public:
 
     void Track(const cv::Mat &imagegray, const cv::Mat &imD, const double &timeStamps);
 
-    bool TrackRefFrame(const vector<cv::Point3d> vpoints3d, const vector<cv::Point2d> vpoints2d, Eigen::Matrix3d K,
-                       Eigen::Quaterniond R, Eigen::Vector3d t);
+    bool TrackRefFrame(Frame *plastFrame, Frame *pcurrentFrame);
 
 private:
 
@@ -51,8 +50,12 @@ private:
     LineFeature *mplineFeature;
     PointFeature *mppointFeature;
 
-    cv::Mat mimgGray;
+    cv::Mat mimageGray;
+    cv::Mat mimagergb;
+    cv::Mat mlastimageGrays;
     cv::Mat mlastimagergb;
+    cv::Mat mimageDepth;
+    cv::Mat mlastimageDepth;
     mutex mMutex;
 
 }; // class Tracking

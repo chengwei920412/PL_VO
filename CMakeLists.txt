@@ -11,6 +11,7 @@ set(OpenCV_DIR "/home/rain/workspace/library/opencv-3.2.0/install/share/OpenCV")
 find_package(OpenCV 3 REQUIRED)
 find_package(Glog REQUIRED)
 find_package(Ceres REQUIRED)
+find_package(Sophus REQUIRED)
 
 include_directories("/usr/include/eigen3/")
 
@@ -20,6 +21,7 @@ include_directories(
     ${CERES_INCLUDE_DIRS}
     ${Pangolin_INCLUDE_DIRS}
     BEFORE ${GLOG_INCLUDE_DIRS}
+    ${Sophus_INCLUDE_DIRS}
 )
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/LSD/include)
@@ -33,11 +35,13 @@ add_library(${PROJECT_NAME} SHARED
     src/PointFeature.cpp
     src/Frame.cpp
     src/Tracking.cpp
-    src/System.cpp)
+    src/System.cpp
+    src/Map.cpp)
 
 target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBRARIES}
     ${CERES_LIBRARIES}
+    ${Sophus_LIBRARIES}
     ${PROJECT_SOURCE_DIR}/thirdparty/LSD/lib/liblsd.so
     ${PROJECT_SOURCE_DIR}/thirdparty/line_descriptor/lib/liblinedesc.so
 )

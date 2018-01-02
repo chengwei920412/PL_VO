@@ -3,6 +3,7 @@
 //
 
 #include "Tracking.h"
+#include "Converter.h"
 
 namespace PL_VO
 {
@@ -13,32 +14,45 @@ Tracking::Tracking(Camera *pCamera) : mpcamera(pCamera)
     mppointFeature = new(PointFeature);
 }
 
+Tracking::~Tracking()
+{
+    delete(mplineFeature);
+    delete(mppointFeature);
+}
+
 void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &timeStamps)
 {
-    mimgGray = imagergb.clone();
-    cv::Mat imDepth = imD;
+    mimageGray = imagergb.clone();
+    mimagergb = imagergb.clone();
+    mimageDepth = imD;
 
-//    bool mbRGB = true;
-//    if(mimgGray.channels()==3)
-//    {
-//        if(mbRGB)
-//            cvtColor(mimgGray,mimgGray,CV_RGB2GRAY);
-//        else
-//            cvtColor(mimgGray,mimgGray,CV_BGR2GRAY);
-//    }
-//    else if(mimgGray.channels()==4)
-//    {
-//        if(mbRGB)
-//            cvtColor(mimgGray,mimgGray,CV_RGBA2GRAY);
-//        else
-//            cvtColor(mimgGray,mimgGray,CV_BGRA2GRAY);
-//    }
+    bool mbRGB = true;
+    if(mimageGray.channels()==3)
+    {
+        if(mbRGB)
+            cvtColor(mimageGray,mimageGray,CV_RGB2GRAY);
+        else
+            cvtColor(mimageGray,mimageGray,CV_BGR2GRAY);
+    }
+    else if(mimageGray.channels()==4)
+    {
+        if(mbRGB)
+            cvtColor(mimageGray,mimageGray,CV_RGBA2GRAY);
+        else
+            cvtColor(mimageGray,mimageGray,CV_BGRA2GRAY);
+    }
 
     mpcurrentFrame = new Frame(timeStamps, mpcamera, mplineFeature, mppointFeature);
 
-    mpcurrentFrame->detectFeature(imagergb, imDepth);
+    if (mpcurrentFrame->GetFrameID() == 0)
+    {
+        mpcurrentFrame->Tcw.so3().setQuaternion(Eigen::Quaterniond::Identity());
+        mpcurrentFrame->Tcw.translation() = Eigen::Vector3d(0, 0, 0);
+    }
 
-    if (!mlastimagergb.empty())
+    mpcurrentFrame->detectFeature(mimageGray, mimageDepth);
+
+    if (!mlastimageGrays.empty())
     {
         vector<cv::DMatch> vpointMatches;
         vector<cv::DMatch> vpointRefineMatches;
@@ -48,24 +62,54 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
         mpcurrentFrame->matchLPFeature(mplastFrame->mpointDesc, mpcurrentFrame->mpointDesc, vpointMatches,
                                        mplastFrame->mlineDesc, mpcurrentFrame->mlineDesc, vlineMatches);
 
-        mpcurrentFrame->refineMatches(mplastFrame->mvKeyPoint, mpcurrentFrame->mvKeyPoint,
+        mpcurrentFrame->refineLPMatches(mplastFrame->mvKeyPoint, mpcurrentFrame->mvKeyPoint,
                                       mplastFrame->mvKeyLine, mpcurrentFrame->mvKeyLine,
                                       vpointMatches, vpointRefineMatches, vlineMatches, vlineRefineMatches);
+        vector<cv::Point3d> vpts3d;
+        vector<cv::Point2d> vpts2d;
+
+        for (auto match:vpointRefineMatches)
+        {
+            double d = mplastFrame->findDepth(mplastFrame->mvKeyPoint[match.queryIdx], mlastimageDepth);
+            if (d < 0)
+                continue;
+
+            Eigen::Vector3d Point3dw;
+            Point3dw = mpcamera->Pixwl2World(Converter::toVector2d(mplastFrame->mvKeyPoint[match.queryIdx].pt),
+                                             mplastFrame->Tcw.so3().unit_quaternion(), mplastFrame->Tcw.translation(), d);
+
+            vpts3d.push_back(Converter::toCvPoint3f(Point3dw));
+            vpts2d.push_back(mpcurrentFrame->mvKeyPoint[match.trainIdx].pt);
+
+        }
+
+        cv::Mat rvec, tvec, inliers;
+        cv::solvePnPRansac(vpts3d, vpts2d, Converter::toCvMat(mpcamera->GetCameraIntrinsic()), cv::Mat(),
+                           rvec, tvec, false, 100, 4.0, 0.99, inliers);
+
+//        cv::solvePnP(vpts3d, vpts2d, Converter::toCvMat(mpcamera->GetCameraIntrinsic()), cv::Mat(), rvec, tvec, false);
+
+        mpcurrentFrame->Tcw = Sophus::SE3(Sophus::SO3(rvec.at<double>(0,0), rvec.at<double>(1,0), rvec.at<double>(2,0)),
+                                          Converter::toVector3d(tvec));
+
+        cout << mpcurrentFrame->Tcw << endl;
 
         cv::Mat showimg;
-        cv::drawMatches(mlastimagergb, mplastFrame->mvKeyPoint, mimgGray, mpcurrentFrame->mvKeyPoint,
+        cv::drawMatches(mlastimageGrays, mplastFrame->mvKeyPoint, mimageGray, mpcurrentFrame->mvKeyPoint,
                         vpointRefineMatches, showimg);
 
-        std::vector<char> mask(vlineRefineMatches.size(), 1);
-        cv::line_descriptor::drawLineMatches(mlastimagergb, mplastFrame->mvKeyLine, mimgGray, mpcurrentFrame->mvKeyLine,
-                                             vlineRefineMatches, showimg,  cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
-                                             cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
+//        std::vector<char> mask(vlineRefineMatches.size(), 1);
+//        cv::line_descriptor::drawLineMatches(mlastimagergb, mplastFrame->mvKeyLine, mimagergb, mpcurrentFrame->mvKeyLine,
+//                                             vlineRefineMatches, showimg,  cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
+//                                             cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
         cv::imshow(" ", showimg);
         cv::waitKey(5);
     }
 
     mplastFrame = new Frame(*mpcurrentFrame);
-    mlastimagergb = imagergb.clone();
+    mlastimageGrays = mimageGray.clone();
+    mlastimagergb = mimagergb.clone();
+    mlastimageDepth = mimageDepth.clone();
 }
 
 } // namespace PL_VO

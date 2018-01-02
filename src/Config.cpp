@@ -9,6 +9,8 @@ namespace PL_VO
 
 Config::Config()
 {
+    depth_scale = 1000;
+
     // flag
     has_points         = true;      // true if using points
     has_lines          = true;      // true if using line segments
