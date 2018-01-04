@@ -27,6 +27,7 @@ protected:
     double mk2;
     double mp1;
     double mp2;
+    double mk3;
 
 public:
 
@@ -57,6 +58,8 @@ public:
 
     inline Eigen::Vector4d GetDistortionPara() const {return Eigen::Vector4d(mk1, mk2, mp1, mp2);}
 
+    inline Eigen::Matrix<double, 5, 1> GetDistortionPara2() const;
+
     inline Eigen::Matrix3d GetCameraIntrinsic() const;
 
     inline void SetCameraIntrinsic(Eigen::Matrix3d intrinsic);
@@ -81,6 +84,14 @@ public:
     void LiftProjective(const Eigen::Vector2d &p, Eigen::Vector3d &P);
 
 }; // class Camera
+
+inline Eigen::Matrix<double, 5, 1> Camera::GetDistortionPara2() const
+{
+    Eigen::Matrix<double, 5, 1> undistortmatrix;
+    undistortmatrix << mk1, mk2, mp1, mp2, mk3;
+
+    return undistortmatrix;
+}
 
 
 inline Eigen::Matrix3d Camera::GetCameraIntrinsic() const

@@ -36,7 +36,9 @@ add_library(${PROJECT_NAME} SHARED
     src/Frame.cpp
     src/Tracking.cpp
     src/System.cpp
-    src/Map.cpp)
+    src/Map.cpp
+    src/Optimizer.cpp
+)
 
 target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBRARIES}
@@ -60,3 +62,6 @@ target_link_libraries(test_line_match ${PROJECT_NAME})
 
 add_executable(test_converter test/test_converter.cpp)
 target_link_libraries(test_converter ${PROJECT_NAME})
+
+add_executable(test_PLfeature_optimization test/test_PLfeature_optimization/test_PLfeature_optimization.cpp)
+target_link_libraries(test_PLfeature_optimization ${PROJECT_NAME})

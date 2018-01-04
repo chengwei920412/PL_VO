@@ -9,17 +9,24 @@ namespace PL_VO
 
 Config::Config()
 {
-    depth_scale = 1000;
-
+    depth_scale = 5000;
+    image_RGBForm = true;
     // flag
     has_points         = true;      // true if using points
     has_lines          = true;      // true if using line segments
-    lr_in_parallel     = false;      // true if detecting and matching features in parallel
-    pl_in_parallel     = false  ;      // true if detecting points and line segments in parallel
+    lr_in_parallel     = false;     // true if detecting and matching features in parallel
+    pl_in_parallel     = false;     // true if detecting points and line segments in parallel
     best_lr_matches    = true;      // true if double-checking the matches between the two images
     adaptative_fast    = true;      // true if using adaptative fast_threshold
     // ORB
     orb_nfeatures = 300;
+    orb_scale_factor = 1.2;
+    orb_nlevels      = 4;
+    orb_edge_th      = 31;
+    orb_wta_k        = 2;
+    orb_score        = 1;           // 0 - HARRIS  |  1 - FAST
+    orb_patch_size   = 31;
+    orb_fast_th      = 20;          // default FAST threshold
 
     // LSD parameters
     lsd_nfeatures    = 300;         // set to 0 if keeping all lines

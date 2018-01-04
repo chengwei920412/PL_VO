@@ -31,7 +31,7 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
     mimagergb = imagergb.clone();
     mimageDepth = imD;
 
-    bool mbRGB = true;
+    bool mbRGB = Config::imageRGBForm();
     if(mimageGray.channels()==3)
     {
         if(mbRGB)
@@ -68,33 +68,11 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
                                        mplastFrame->mlineDesc, mpcurrentFrame->mlineDesc, vlineMatches);
 
         mpcurrentFrame->refineLPMatches(mplastFrame->mvKeyPoint, mpcurrentFrame->mvKeyPoint,
-                                      mplastFrame->mvKeyLine, mpcurrentFrame->mvKeyLine,
-                                      vpointMatches, vpointRefineMatches, vlineMatches, vlineRefineMatches);
-        vector<cv::Point3d> vpts3d;
-        vector<cv::Point2d> vpts2d;
+                                        mplastFrame->mvKeyLine, mpcurrentFrame->mvKeyLine,
+                                        vpointMatches, vpointRefineMatches, vlineMatches, vlineRefineMatches);
 
-        for (auto match:vpointRefineMatches)
-        {
-            double d = mplastFrame->findDepth(mplastFrame->mvKeyPoint[match.queryIdx], mlastimageDepth);
-            if (d < 0)
-                continue;
-
-            Eigen::Vector3d Point3dw;
-            Point3dw = mpcamera->Pixwl2World(Converter::toVector2d(mplastFrame->mvKeyPoint[match.queryIdx].pt),
-                                             mplastFrame->Tcw.so3().unit_quaternion(), mplastFrame->Tcw.translation(), d);
-
-            vpts3d.push_back(Converter::toCvPoint3f(Point3dw));
-            vpts2d.push_back(mpcurrentFrame->mvKeyPoint[match.trainIdx].pt);
-
-        }
-
-        cv::Mat rvec, tvec, inliers;
-        cv::solvePnPRansac(vpts3d, vpts2d, Converter::toCvMat(mpcamera->GetCameraIntrinsic()), cv::Mat(),
-                           rvec, tvec, false, 100, 4.0, 0.99, inliers);
-
-
-        mpcurrentFrame->Tcw = Sophus::SE3(Sophus::SO3(rvec.at<double>(0,0), rvec.at<double>(1,0), rvec.at<double>(2,0)),
-                                          Converter::toVector3d(tvec));
+        // use the pnp and point match to track the reference frame
+        TrackRefFrame(vpointRefineMatches);
 
         cout << mpcurrentFrame->Tcw << endl;
 
@@ -110,12 +88,43 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
         cv::waitKey(5);
     }
 
-    mpMap->mlFrames.push_back(mpcurrentFrame);
+    mpMap->mlpFrames.push_back(mpcurrentFrame);
 
     mplastFrame = new Frame(*mpcurrentFrame);
     mlastimageGrays = mimageGray.clone();
     mlastimagergb = mimagergb.clone();
     mlastimageDepth = mimageDepth.clone();
 }
+
+bool Tracking::TrackRefFrame(const vector<cv::DMatch> vpointMatches)
+{
+    vector<cv::Point3d> vpts3d;
+    vector<cv::Point2d> vpts2d;
+
+    for (auto match:vpointMatches)
+    {
+        double d = mplastFrame->FindDepth(mplastFrame->mvKeyPoint[match.queryIdx], mlastimageDepth);
+        if (d < 0)
+            continue;
+
+        Eigen::Vector3d Point3dw;
+        Point3dw = mpcamera->Pixwl2World(Converter::toVector2d(mplastFrame->mvKeyPoint[match.queryIdx].pt),
+                                         mplastFrame->Tcw.so3().unit_quaternion(), mplastFrame->Tcw.translation(), d);
+
+        vpts3d.push_back(Converter::toCvPoint3f(Point3dw));
+        vpts2d.push_back(mpcurrentFrame->mvKeyPoint[match.trainIdx].pt);
+
+    }
+
+    cv::Mat rvec, tvec, inliers;
+    cv::solvePnPRansac(vpts3d, vpts2d, Converter::toCvMat(mpcamera->GetCameraIntrinsic()), cv::Mat(),
+                       rvec, tvec, false, 100, 4.0, 0.99, inliers);
+
+
+    mpcurrentFrame->Tcw = Sophus::SE3(Sophus::SO3(rvec.at<double>(0,0), rvec.at<double>(1,0), rvec.at<double>(2,0)),
+                                      Converter::toVector3d(tvec));
+}
+
+
 
 } // namespace PL_VO

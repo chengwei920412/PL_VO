@@ -12,7 +12,6 @@
 #include <opencv2/highgui/highgui.hpp>
 #include "System.h"
 
-
 using namespace std;
 
 

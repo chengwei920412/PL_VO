@@ -12,6 +12,7 @@
 #include "PointFeature.h"
 #include "Camera.h"
 #include "Map.h"
+#include "Converter.h"
 #include "TicToc.h"
 
 namespace PL_VO
@@ -20,6 +21,8 @@ namespace PL_VO
 class Camera;
 class LineFeature;
 class PointFeature;
+struct LineFeature2D;
+struct PointFeature2D;
 
 class Frame
 {
@@ -37,15 +40,24 @@ public:
 
     void detectFeature(const cv::Mat &imagergb, const cv::Mat &imagedepth);
 
+    void UndistorKeyFeature();
+
     void matchLPFeature(const cv::Mat &pointdesc1, const cv::Mat &pointdesc2, vector<cv::DMatch> &vpointmatches12,
                         const cv::Mat &linedesc1, const cv::Mat &linedesc2, vector<cv::DMatch> &vlinematches12);
 
     void refineLPMatches(const vector<cv::KeyPoint> &mvKeyPoint1, const vector<cv::KeyPoint> &mvKeyPoint2,
-                         const vector<cv::line_descriptor::KeyLine> &mvKeyLine1, const vector<cv::line_descriptor::KeyLine> &mvKeyLine2,
+                         const vector<cv::line_descriptor::KeyLine> &mvKeyLine1,
+                         const vector<cv::line_descriptor::KeyLine> &mvKeyLine2,
                          const vector<cv::DMatch> &vpointMatches12, vector<cv::DMatch> &vpointRefineMatches12,
                          const vector<cv::DMatch> &vlineMatches12, vector<cv::DMatch> &vlineRefineMatches12);
 
-    double findDepth(const cv::KeyPoint &kp, const cv::Mat &imagedepth);
+    double FindDepth(const cv::KeyPoint &kp, const cv::Mat &imagedepth);
+
+    void AddMapPoint(const cv::Mat &imageDepth, const vector<cv::DMatch> vpointMatches, const vector<cv::DMatch> vlineMatches);
+
+    Camera *mpCamera;
+    LineFeature *mpLineFeature;
+    PointFeature *mpPointFeature;
 
     double mtimeStamp;
 
@@ -56,13 +68,12 @@ public:
     cv::Mat mlineDesc;
     vector<cv::KeyPoint> mvKeyPoint;
     vector<cv::line_descriptor::KeyLine> mvKeyLine;
-
+    vector<cv::KeyPoint> mvKeyPointUn;
+    vector<cv::line_descriptor::KeyLine> mvKeyLineUn;
+    vector<LineFeature2D*> mvLineFeature2D;
+    vector<PointFeature2D*> mvPointFeature2D;
 
 private:
-
-    Camera *mpCamera;
-    LineFeature *mpLineFeature;
-    PointFeature *mpPointFeature;
 
     static size_t gCount;
     size_t mID;

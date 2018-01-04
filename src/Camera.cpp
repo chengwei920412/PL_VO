@@ -25,6 +25,7 @@ Camera::Camera(const string &strSettingsFile)
     mk2 = fsSettings["Camera.k2"];
     mp1 = fsSettings["Camera.p1"];
     mp2 = fsSettings["Camera.p2"];
+    mk3 = fsSettings["Camera.k3"];
 
     mImageHeight = fsSettings["Camera.height"];
     mImageWidth = fsSettings["Camera.width"];

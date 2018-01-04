@@ -17,7 +17,8 @@ public:
 
     static Config& getInstance();
 
-    static int& depthscale() {return getInstance().depth_scale;}
+    static bool& imageRGBForm()          {return getInstance().image_RGBForm;}
+    static int& depthscale()             {return getInstance().depth_scale;}
 
     // flag
     static bool&    hasPoints()          { return getInstance().has_points; }
@@ -27,6 +28,13 @@ public:
 
     // ORB
     static int&     orbNFeatures()       { return getInstance().orb_nfeatures; }
+    static double&  orbScaleFactor()     { return getInstance().orb_scale_factor; }
+    static int&     orbNLevels()         { return getInstance().orb_nlevels; }
+    static int&     orbEdgeTh()          { return getInstance().orb_edge_th; }
+    static int&     orbWtaK()            { return getInstance().orb_wta_k; }
+    static int&     orbScore()           { return getInstance().orb_score; }
+    static int&     orbPatchSize()       { return getInstance().orb_patch_size; }
+    static int&     orbFastTh()          { return getInstance().orb_fast_th; }
 
     // lines detection and matching
     static int&     lsdNFeatures()       { return getInstance().lsd_nfeatures; }
@@ -46,6 +54,7 @@ public:
 
 private:
 
+    bool image_RGBForm;
     int depth_scale;
 
     // flags
@@ -56,7 +65,14 @@ private:
     bool best_lr_matches;
     bool adaptative_fast;
 
-    int orb_nfeatures;
+    int    orb_nfeatures;
+    double orb_scale_factor;
+    int    orb_nlevels;
+    int    orb_edge_th;
+    int    orb_wta_k;
+    int    orb_score;
+    int    orb_patch_size;
+    int    orb_fast_th;
 
     // lines detection and matching
     int    lsd_nfeatures;

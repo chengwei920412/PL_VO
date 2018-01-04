@@ -17,28 +17,66 @@ namespace PL_VO
 {
 
 class Frame;
+class MapPoint;
+struct PointFeature2D;
+struct LineFeature2D;
+
+struct PointFeature2D
+{
+    PointFeature2D(const Eigen::Vector2d &pixel, const int &level=0, const double &score=0)
+                   : mpixel(pixel), mlevel(level), mscore(score) {}
+
+    Eigen::Vector2d mpixel;
+    double mdepth = -1;
+    int mlevel = -1;
+    double mangle = 0;
+    cv::Mat desc = cv::Mat(1, 32, CV_8UC1);
+    Frame *mpFrame = nullptr;
+    MapPoint *mpMapPoint = nullptr;
+    bool mbbad = false;
+    double mscore = 0;
+};
+
+struct LineFeature2D
+{
+    LineFeature2D(const Eigen::Vector2d &Startpixel, const Eigen::Vector2d &Endpixel, const int &level=0,
+                  const double &score=0) : mStartpixel(Startpixel), mEndpixel(Endpixel), mlevel(level), mscore(score){}
+
+    Eigen::Vector2d mStartpixel = Eigen::Vector2d(0, 0);
+    Eigen::Vector2d mEndpixel = Eigen::Vector2d(0, 0);
+    double mStartdepth = -1;
+    double mEnddepth = -1;
+    int mlevel = -1;
+    double mangle = 0;
+    cv::Mat desc = cv::Mat(1, 32, CV_8UC1);
+    Frame *mpFrame = nullptr;
+    MapPoint *MapLine = nullptr;
+    bool mbbad = false;
+    double mscore = 0;
+
+};
 
 class MapPoint
 {
 public:
-    size_t  mid;
+    size_t  mID;
     Eigen::Vector3d mPosew;
     cv::Mat mdesc;
-
+    bool mbbad = false;
     list<Frame*> mlpFrameinvert;
-
+    map<size_t, PointFeature2D*> mmpPointFeature2D;
 };
 
 class MapLine
 {
 public:
-    size_t mid;
+    size_t mID;
     Eigen::Vector3d mPoseStartw;
     Eigen::Vector3d mPoseEndw;
+    bool mbbad = false;
     cv::Mat mdesc;
-
     list<Frame*> mlpFrameinvert;
-
+    map<size_t, LineFeature2D*> mmpLineFeature2D;
 };
 
 class Map
@@ -46,8 +84,9 @@ class Map
 public:
     Map();
 
-    list<Frame*> mlFrames;
-
+    list<Frame*> mlpFrames;
+    vector<MapLine*> mvpMapLine;
+    vector<MapPoint*> mvpMapPoint;
 }; // class Map
 
 } // namespace PL_VO

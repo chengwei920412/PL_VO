@@ -9,7 +9,9 @@ namespace PL_VO
 
 void PointFeature::detectPointfeature(const cv::Mat &img, vector<cv::KeyPoint> &vkeypoints, cv::Mat &pointdesc)
 {
-    cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+    cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create( Config::orbNFeatures(), (float)Config::orbScaleFactor(), Config::orbNLevels(),
+                                                             Config::orbEdgeTh(), 0, Config::orbWtaK(), Config::orbScore(),
+                                                             Config::orbPatchSize(), Config::orbFastTh());
     cv::Ptr<cv::DescriptorExtractor> descriptor = cv::ORB::create();
     cv::Ptr<cv::DescriptorMatcher> matcher  = cv::DescriptorMatcher::create("BruteForce-Hamming");
 

@@ -39,12 +39,11 @@ public:
 
     ~Tracking();
 
-    void Track(const cv::Mat &imagegray, const cv::Mat &imD, const double &timeStamps);
-
     void SetMap(Map *pMap);
 
-    bool TrackRefFrame(Frame *plastFrame, Frame *pcurrentFrame, const cv::Mat &imagedepth,
-                       const vector<cv::DMatch> vpointMatches);
+    void Track(const cv::Mat &imagegray, const cv::Mat &imD, const double &timeStamps);
+
+    bool TrackRefFrame(const vector<cv::DMatch> vpointMatches);
 
 private:
 

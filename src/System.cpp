@@ -35,7 +35,7 @@ void System::SaveTrajectory(const string &filename)
 
     ofstreamer << fixed;
 
-    for (auto frame: mpMap->mlFrames)
+    for (auto frame: mpMap->mlpFrames)
     {
         ofstreamer << setprecision(6) << frame->mtimeStamp << " " << frame->Tcw.translation().transpose() << endl;
     }
