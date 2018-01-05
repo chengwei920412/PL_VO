@@ -54,6 +54,7 @@ public:
 
 class Optimizer
 {
+public:
     void static PoseOptimization(Frame *pFrame);
 }; // class Optimizer
 

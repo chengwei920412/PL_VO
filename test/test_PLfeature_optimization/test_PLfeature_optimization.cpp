@@ -5,6 +5,7 @@
 #include <Camera.h>
 #include <Converter.h>
 #include "Frame.h"
+#include "Optimizer.h"
 
 
 int main(int argc, char* argv[])
@@ -60,6 +61,7 @@ int main(int argc, char* argv[])
                                    vpointMatches, vpointRefineMatches, vlineMatches, vlineRefineMatches);
 
     pcurrentFrame->UndistortKeyFeature();
+    plastFrame->UndistortKeyFeature();
 
     for (size_t i = 0; i < pcurrentFrame->mvKeyPoint.size(); i++)
     {
@@ -86,16 +88,16 @@ int main(int argc, char* argv[])
         cout << "matches size: " << vpointRefineMatches.size() << endl;
         for (auto match:vpointRefineMatches)
         {
-            double d = plastFrame->FindDepth(plastFrame->mvKeyPoint[match.queryIdx], img1depth);
+            double d = plastFrame->FindDepth(plastFrame->mvKeyPointUn[match.queryIdx].pt, img1depth);
             if (d < 0)
                 continue;
 
             Eigen::Vector3d Point3dw;
-            Point3dw = pcamera->Pixwl2World(PL_VO::Converter::toVector2d(plastFrame->mvKeyPoint[match.queryIdx].pt),
+            Point3dw = pcamera->Pixwl2World(PL_VO::Converter::toVector2d(plastFrame->mvKeyPointUn[match.queryIdx].pt),
                                             plastFrame->Tcw.so3().unit_quaternion(), plastFrame->Tcw.translation(), d);
 
             vpts3d.push_back(PL_VO::Converter::toCvPoint3f(Point3dw));
-            vpts2d.push_back(pcurrentFrame->mvKeyPoint[match.trainIdx].pt);
+            vpts2d.push_back(pcurrentFrame->mvKeyPointUn[match.trainIdx].pt);
 
         }
 
@@ -106,20 +108,23 @@ int main(int argc, char* argv[])
         pcurrentFrame->Tcw = Sophus::SE3(Sophus::SO3(rvec.at<double>(0,0), rvec.at<double>(1,0), rvec.at<double>(2,0)),
                                          PL_VO::Converter::toVector3d(tvec));
 
-
-
         cout << pcurrentFrame->Tcw << endl;
     } // -0.12910648864000002  -0.011553516588 0.056891304389999994
 
+
+    pcurrentFrame->UnprojectStereo(img2depth, vpointRefineMatches, vlineRefineMatches);
+
+    PL_VO::Optimizer::PoseOptimization(pcurrentFrame);
+
     cv::Mat showimg;
-    cv::drawMatches(img1, plastFrame->mvKeyPoint, img2, pcurrentFrame->mvKeyPoint, vpointRefineMatches, showimg);
+//    cv::drawMatches(img1, plastFrame->mvKeyPointUn, img2, pcurrentFrame->mvKeyPointUn, vpointRefineMatches, showimg);
 
-//    std::vector<char> mask(vlineRefineMatches.size(), 1);
-//    cv::line_descriptor::drawLineMatches(img1, plastFrame->mvKeyLine, img2, pcurrentFrame->mvKeyLine,
-//                                         vlineRefineMatches, showimg,  cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
-//                                         cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
-
+    std::vector<char> mask(vlineRefineMatches.size(), 1);
+    cv::line_descriptor::drawLineMatches(img1, plastFrame->mvKeyLineUn, img2, pcurrentFrame->mvKeyLineUn,
+                                         vlineRefineMatches, showimg,  cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
+                                         cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
     cv::imshow(" ", showimg);
+
     cv::waitKey(0);
 
     return 0;

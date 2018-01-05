@@ -18,6 +18,7 @@ namespace PL_VO
 
 class Frame;
 class MapPoint;
+class MapLine;
 struct PointFeature2D;
 struct LineFeature2D;
 
@@ -50,7 +51,7 @@ struct LineFeature2D
     double mangle = 0;
     cv::Mat desc = cv::Mat(1, 32, CV_8UC1);
     Frame *mpFrame = nullptr;
-    MapPoint *MapLine = nullptr;
+    MapLine *pMapLine = nullptr;
     bool mbbad = false;
     double mscore = 0;
 
@@ -59,6 +60,9 @@ struct LineFeature2D
 class MapPoint
 {
 public:
+
+    MapPoint();
+
     size_t  mID;
     Eigen::Vector3d mPosew;
     cv::Mat mdesc;
@@ -70,6 +74,9 @@ public:
 class MapLine
 {
 public:
+
+    MapLine();
+
     size_t mID;
     Eigen::Vector3d mPoseStartw;
     Eigen::Vector3d mPoseEndw;
@@ -82,6 +89,7 @@ public:
 class Map
 {
 public:
+
     Map();
 
     list<Frame*> mlpFrames;

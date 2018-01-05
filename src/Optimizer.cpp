@@ -42,7 +42,6 @@ bool PoseLocalParameterization::ComputeJacobian(const double *x, double *jacobia
  * @param jacobians
  * @return
  */
-
 bool ReprojectionErrorSE3::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const
 {
     Eigen::Map<const Eigen::Quaterniond> quaterd(parameters[0]);
@@ -57,7 +56,7 @@ bool ReprojectionErrorSE3::Evaluate(double const *const *parameters, double *res
     Eigen::Matrix<double, 2, 3, Eigen::RowMajor> jacobian;
 
     jacobian << fx/p[2],  0, -fx*p[0]/p[2]/p[2],
-            0, fy/p[2], -fy*p[1]/p[2]/p[2];
+                 0, fy/p[2], -fy*p[1]/p[2]/p[2];
 
     if(jacobians != nullptr)
     {
@@ -67,8 +66,8 @@ bool ReprojectionErrorSE3::Evaluate(double const *const *parameters, double *res
             Jse3.setZero();
 
             // very important! the form of the se3 is the rotation in the front and the transformation in the back
-            Jse3.block<2,3>(0,0) = -jacobian*Converter::skew(p);
-            Jse3.block<2,3>(0,3) = jacobian;
+            Jse3.block<2,3>(0,0) = jacobian;
+            Jse3.block<2,3>(0,3) = -jacobian*Converter::skew(p);
         }
         if(jacobians[1] != nullptr)
         {
@@ -82,66 +81,68 @@ bool ReprojectionErrorSE3::Evaluate(double const *const *parameters, double *res
 
 void Optimizer::PoseOptimization(Frame *pFrame)
 {
-//    Eigen::Matrix3d K;
-//    K = pFrame->mpCamera->GetCameraIntrinsic();
-//
-//    cv::Mat extrinsic(7, 1, CV_64FC1);
-//
-//    {
-//        extrinsic.ptr<double>()[0] = pFrame->Tcw.unit_quaternion().x();
-//        extrinsic.ptr<double>()[1] = pFrame->Tcw.unit_quaternion().y();
-//        extrinsic.ptr<double>()[2] = pFrame->Tcw.unit_quaternion().z();
-//        extrinsic.ptr<double>()[3] = pFrame->Tcw.unit_quaternion().w();
-//        pFrame->Tcw.translation().copyTo(extrinsic.rowRange(4, 7));
-//    }
-//
-//    cout << "extrinsic: " << endl << extrinsic.t() << endl;
-//
-//    ceres::Problem problem;
-//
-//    problem.AddParameterBlock(extrinsic.ptr<double>(), 7, new PoseLocalParameterization());
-//
-//
-//    ceres::LossFunction* lossfunction = new ceres::HuberLoss(4);   // loss function make bundle adjustment robuster.
-//
-//    for (int i = 0; i < vPoints3d.size(); i++)
-//    {
-//        cv::Point2d observed = vPoints2d[i];
-//
-//        ceres::CostFunction* costfunction = new ReprojectionErrorSE3(K(0, 0), K(1, 1),
-//                                                                     K(0, 2), K(1, 2),
-//                                                                     observed.x, observed.y);
-//
-//        problem.AddResidualBlock(
-//                costfunction, lossfunction,
-//                extrinsic.ptr<double>(), &vPoints3d[i].x);
-//
-//        problem.AddParameterBlock(&vPoints3d[i].x, 3);
-//    }
-//
-//    ceres::Solver::Options options;
-//    options.linear_solver_type = ceres::DENSE_SCHUR;
-//    options.minimizer_progress_to_stdout = true;
-//    options.max_solver_time_in_seconds = 0.3;
-//
-//    ceres::Solver::Summary summary;
-//    ceres::Solve(options, &problem, &summary);
-//
-//    if (!summary.IsSolutionUsable())
-//    {
-//        cout << "Bundle Adjustment failed." << std::endl;
-//    }
-//    else
-//    {
-//        // Display statistics about the minimization
-//        cout << summary.BriefReport() << endl
-//             << " residuals number: " << summary.num_residuals << endl
-//             << " Initial RMSE: " << sqrt(summary.initial_cost / summary.num_residuals) << endl
-//             << " Final RMSE: " << sqrt(summary.final_cost / summary.num_residuals) << endl
-//             << " Time (s): " << summary.total_time_in_seconds << endl;
-//
-//        cout << extrinsic.t() << endl;
-//    }
+    Eigen::Matrix3d K;
+    K = pFrame->mpCamera->GetCameraIntrinsic();
+
+    cv::Mat extrinsic(7, 1, CV_64FC1);
+
+    {
+        extrinsic.ptr<double>()[0] = pFrame->Tcw.unit_quaternion().x();
+        extrinsic.ptr<double>()[1] = pFrame->Tcw.unit_quaternion().y();
+        extrinsic.ptr<double>()[2] = pFrame->Tcw.unit_quaternion().z();
+        extrinsic.ptr<double>()[3] = pFrame->Tcw.unit_quaternion().w();
+        extrinsic.ptr<double>()[4] = pFrame->Tcw.translation()[0];
+        extrinsic.ptr<double>()[5] = pFrame->Tcw.translation()[1];
+        extrinsic.ptr<double>()[6] = pFrame->Tcw.translation()[2];
+    }
+
+    cout << "extrinsic: " << endl << extrinsic.t() << endl;
+
+    ceres::Problem problem;
+
+    problem.AddParameterBlock(extrinsic.ptr<double>(), 7, new PoseLocalParameterization());
+
+
+    ceres::LossFunction* lossfunction = new ceres::HuberLoss(4);   // loss function make bundle adjustment robuster.
+
+    for (int i = 0; i < pFrame->mvpMapPoint.size(); i++)
+    {
+        Eigen::Vector2d observed = pFrame->mvpPointFeature2D[i]->mpixel;
+
+        ceres::CostFunction* costfunction = new ReprojectionErrorSE3(K(0, 0), K(1, 1),
+                                                                     K(0, 2), K(1, 2),
+                                                                     observed[0], observed[1]);
+
+        problem.AddResidualBlock(
+                costfunction, lossfunction,
+                extrinsic.ptr<double>(), &pFrame->mvpMapPoint[i]->mPosew.x());
+
+        problem.AddParameterBlock(&pFrame->mvpMapPoint[i]->mPosew.x(), 3);
+    }
+
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::DENSE_SCHUR;
+    options.minimizer_progress_to_stdout = true;
+    options.max_solver_time_in_seconds = 0.3;
+
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+
+    if (!summary.IsSolutionUsable())
+    {
+        cout << "Bundle Adjustment failed." << std::endl;
+    }
+    else
+    {
+        // Display statistics about the minimization
+        cout << summary.BriefReport() << endl
+             << " residuals number: " << summary.num_residuals << endl
+             << " Initial RMSE: " << sqrt(summary.initial_cost / summary.num_residuals) << endl
+             << " Final RMSE: " << sqrt(summary.final_cost / summary.num_residuals) << endl
+             << " Time (s): " << summary.total_time_in_seconds << endl;
+
+        cout << extrinsic.t() << endl;
+    }
 }
 
 } // namespace PL_VO

@@ -23,6 +23,8 @@ class LineFeature;
 class PointFeature;
 struct LineFeature2D;
 struct PointFeature2D;
+class MapPoint;
+class MapLine;
 
 class Frame
 {
@@ -40,10 +42,6 @@ public:
 
     void detectFeature(const cv::Mat &imagergb, const cv::Mat &imagedepth);
 
-    void UndistortPointFeature();
-
-    void UndistortLineFeature();
-
     void UndistortKeyFeature();
 
     void ComputeImageBounds(const cv::Mat &image);
@@ -57,9 +55,9 @@ public:
                          const vector<cv::DMatch> &vpointMatches12, vector<cv::DMatch> &vpointRefineMatches12,
                          const vector<cv::DMatch> &vlineMatches12, vector<cv::DMatch> &vlineRefineMatches12);
 
-    double FindDepth(const cv::KeyPoint &kp, const cv::Mat &imagedepth);
+    double FindDepth(const cv::Point2f &point, const cv::Mat &imagedepth);
 
-    void AddMapPoint(const cv::Mat &imageDepth, const vector<cv::DMatch> vpointMatches, const vector<cv::DMatch> vlineMatches);
+    void UnprojectStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> vpointMatches, const vector<cv::DMatch> vlineMatches);
 
     Camera *mpCamera;
     LineFeature *mpLineFeature;
@@ -76,16 +74,25 @@ public:
     vector<cv::line_descriptor::KeyLine> mvKeyLine;
     vector<cv::KeyPoint> mvKeyPointUn;
     vector<cv::line_descriptor::KeyLine> mvKeyLineUn;
-    vector<LineFeature2D*> mvLineFeature2D;
-    vector<PointFeature2D*> mvPointFeature2D;
+    vector<LineFeature2D*> mvpLineFeature2D;
+    vector<PointFeature2D*> mvpPointFeature2D;
+    vector<MapPoint*> mvpMapPoint;
+    vector<MapLine*> mvpMapLine;
 
 private:
+
+    void UndistortPointFeature();
+
+    void UndistortLineFeature();
+
+    void UnprojectPointStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> vpointMatches);
+
+    void UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> vlineMatches);
 
     static size_t gCount;
     size_t mID;
     int mImageHeight;
     int mImageWidth;
-
 
 }; // class Frame
 

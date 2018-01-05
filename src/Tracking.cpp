@@ -105,7 +105,7 @@ bool Tracking::TrackRefFrame(const vector<cv::DMatch> vpointMatches)
 
     for (auto match:vpointMatches)
     {
-        double d = mplastFrame->FindDepth(mplastFrame->mvKeyPoint[match.queryIdx], mlastimageDepth);
+        double d = mplastFrame->FindDepth(mplastFrame->mvKeyPoint[match.queryIdx].pt, mlastimageDepth);
         if (d < 0)
             continue;
 

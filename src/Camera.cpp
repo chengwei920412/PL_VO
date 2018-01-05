@@ -6,6 +6,7 @@
 
 namespace PL_VO
 {
+
 Camera::Camera(const string &strSettingsFile)
 {
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
@@ -130,9 +131,4 @@ void Camera::InitUndistortRectifyMap(cv::Mat &undistmap1, cv::Mat &undistmap2)
                                 imageSize, CV_16SC2, undistmap1, undistmap2);
 }
 
-
-
-
-
-
-}
+} // namespace PL_VO

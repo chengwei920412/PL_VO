@@ -299,10 +299,10 @@ void Frame::refineLPMatches(const vector<cv::KeyPoint> &mvKeyPoint1, const vecto
     }
 }
 
-double Frame::FindDepth(const cv::KeyPoint &kp, const cv::Mat &imagedepth)
+double Frame::FindDepth(const cv::Point2f &point, const cv::Mat &imagedepth)
 {
-    int x = cvRound(kp.pt.x);
-    int y = cvRound(kp.pt.y);
+    int x = cvRound(point.x);
+    int y = cvRound(point.y);
 
     ushort d = imagedepth.ptr<ushort>(y)[x];
 
@@ -316,6 +316,15 @@ double Frame::FindDepth(const cv::KeyPoint &kp, const cv::Mat &imagedepth)
         int dy[4] = {0,-1,0,1};
         for (int i = 0; i < 4; i++)
         {
+            if ((x+dx[i]) < 0 || (x+dx[i]) > mImageWidth)
+            {
+                continue;
+            }
+            if ((y+dy[i]) < 0 || (y+dy[i]) > mImageHeight)
+            {
+                continue;
+            }
+
             d = imagedepth.ptr<ushort>(y+dy[i])[x+dx[i]];
             if (d != 0)
             {
@@ -327,18 +336,92 @@ double Frame::FindDepth(const cv::KeyPoint &kp, const cv::Mat &imagedepth)
     return -1.;
 }
 
-void Frame::AddMapPoint(const cv::Mat &imageDepth, const vector<cv::DMatch> vpointMatches,
-                        const vector<cv::DMatch> vlineMatches)
+void Frame::UnprojectPointStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> vpointMatches)
 {
     for (auto match : vpointMatches)
     {
-        double d = FindDepth(mvKeyPoint[match.queryIdx], imageDepth);
-        if (d < 0)
+        cv::KeyPoint kp;
+        kp = mvKeyPointUn[match.trainIdx];
+
+        // notice: the pixel of the depth image should use the distorted image
+        double d = FindDepth(kp.pt, imageDepth);
+        if (d <= 0)
             continue;
 
         Eigen::Vector3d Point3dw;
-        Point3dw = mpCamera->Pixwl2World(Converter::toVector2d(mvKeyPoint[match.queryIdx].pt),
-                                         Tcw.so3().unit_quaternion(), Tcw.translation(), d);
+        Point3dw = mpCamera->Pixwl2World(Converter::toVector2d(kp.pt), Tcw.so3().unit_quaternion(), Tcw.translation(), d);
+
+        PointFeature2D *ppointFeature = new PointFeature2D(Converter::toVector2d(kp.pt), kp.octave, kp.response);
+        mvpPointFeature2D.push_back(ppointFeature);
+
+        MapPoint *pMapPoint = new MapPoint;
+        pMapPoint->mPosew = Point3dw;
+        pMapPoint->mmpPointFeature2D[GetFrameID()] = ppointFeature;
+        pMapPoint->mlpFrameinvert.push_back(this);
+        mvpMapPoint.push_back(pMapPoint);
+
+        ppointFeature->mpMapPoint = pMapPoint;
+
+    }
+}
+
+void Frame::UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> vlineMatches)
+{
+    for (auto match : vlineMatches)
+    {
+
+        cv::line_descriptor::KeyLine kl;
+
+        kl = mvKeyLine[match.trainIdx];
+        cv::Point2f startPoint2f;
+        startPoint2f = cv::Point2f(kl.startPointX, kl.startPointY);
+        double d1 = FindDepth(startPoint2f, imageDepth);
+        if (d1 <= 0)
+            continue;
+
+        Eigen::Vector3d startPoint3dw;
+        startPoint3dw = mpCamera->Pixwl2World(Converter::toVector2d(startPoint2f), Tcw.so3().unit_quaternion(), Tcw.translation(), d1);
+
+        cv::Point2f endPoint2f;
+        endPoint2f = cv::Point2f(kl.endPointX, kl.endPointY);
+        double d2 = FindDepth(endPoint2f, imageDepth);
+        if (d2 <= 0)
+            continue;
+
+        Eigen::Vector3d endPoint3dw;
+        endPoint3dw = mpCamera->Pixwl2World(Converter::toVector2d(endPoint2f), Tcw.so3().unit_quaternion(), Tcw.translation(), d2);
+
+        LineFeature2D *plineFeature2D = new LineFeature2D(Converter::toVector2d(startPoint2f),
+                                                          Converter::toVector2d(endPoint2f),kl.octave, kl.response);
+
+        mvpLineFeature2D.push_back(plineFeature2D);
+
+        MapLine *pMapLine = new MapLine();
+        pMapLine->mPoseEndw = endPoint3dw;
+        pMapLine->mPoseStartw = startPoint3dw;
+        pMapLine->mlpFrameinvert.push_back(this);
+        pMapLine->mmpLineFeature2D[GetFrameID()] = plineFeature2D;
+        mvpMapLine.push_back(pMapLine);
+
+        plineFeature2D->pMapLine = pMapLine;
+    }
+}
+
+void Frame::UnprojectStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> vpointMatches,
+                            const vector<cv::DMatch> vlineMatches)
+{
+    if (Config::lrInParallel())
+    {
+        auto pointStereo = async(launch::async, &Frame::UnprojectPointStereo, this, imageDepth, vpointMatches);
+        auto lineStereo = async(launch::async, &Frame::UnprojectLineStereo, this, imageDepth, vlineMatches);
+
+        pointStereo.wait();
+        lineStereo.wait();
+    }
+    else
+    {
+        UnprojectPointStereo(imageDepth, vpointMatches);
+        UnprojectLineStereo(imageDepth, vlineMatches);
     }
 }
 

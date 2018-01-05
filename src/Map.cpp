@@ -7,6 +7,14 @@
 namespace PL_VO
 {
 
+MapPoint::MapPoint()
+{
+}
+
+MapLine::MapLine()
+{
+}
+
 Map::Map()
 {
 }
