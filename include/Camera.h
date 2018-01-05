@@ -8,6 +8,7 @@
 #include <string>
 #include <opencv2/opencv.hpp>
 #include <eigen3/Eigen/Dense>
+#include "Converter.h"
 
 namespace PL_VO
 {
@@ -82,6 +83,8 @@ public:
     void Distortion(const Eigen::Vector2d &p, Eigen::Vector2d &du);
 
     void LiftProjective(const Eigen::Vector2d &p, Eigen::Vector3d &P);
+
+    void InitUndistortRectifyMap(cv::Mat &undistmap1, cv::Mat &undistmap2);
 
 }; // class Camera
 

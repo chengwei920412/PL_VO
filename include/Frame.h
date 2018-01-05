@@ -40,7 +40,13 @@ public:
 
     void detectFeature(const cv::Mat &imagergb, const cv::Mat &imagedepth);
 
-    void UndistorKeyFeature();
+    void UndistortPointFeature();
+
+    void UndistortLineFeature();
+
+    void UndistortKeyFeature();
+
+    void ComputeImageBounds(const cv::Mat &image);
 
     void matchLPFeature(const cv::Mat &pointdesc1, const cv::Mat &pointdesc2, vector<cv::DMatch> &vpointmatches12,
                         const cv::Mat &linedesc1, const cv::Mat &linedesc2, vector<cv::DMatch> &vlinematches12);
@@ -77,6 +83,8 @@ private:
 
     static size_t gCount;
     size_t mID;
+    int mImageHeight;
+    int mImageWidth;
 
 
 }; // class Frame

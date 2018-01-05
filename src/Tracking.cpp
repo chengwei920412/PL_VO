@@ -57,6 +57,8 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
 
     mpcurrentFrame->detectFeature(mimageGray, mimageDepth);
 
+    mpcurrentFrame->UndistortKeyFeature();
+
     if (!mlastimageGrays.empty())
     {
         vector<cv::DMatch> vpointMatches;
