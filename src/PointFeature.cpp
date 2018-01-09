@@ -97,7 +97,9 @@ vector<cv::DMatch> PointFeature::refineMatchesWithFundamental(const vector<cv::K
     for (size_t i = 0; i < vinliersMask.size(); i++)
     {
         if (vinliersMask[i])
+        {
             vinliersMatch.push_back(vmathes[i]);
+        }
     }
 
     return vinliersMatch;

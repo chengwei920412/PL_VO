@@ -14,7 +14,7 @@ Config::Config()
     // flag
     has_points         = true;      // true if using points
     has_lines          = true;      // true if using line segments
-    lr_in_parallel     = false;     // true if detecting and matching features in parallel
+    lr_in_parallel     = true;     // true if detecting and matching features in parallel
     pl_in_parallel     = false;     // true if detecting points and line segments in parallel
     best_lr_matches    = true;      // true if double-checking the matches between the two images
     adaptative_fast    = true;      // true if using adaptative fast_threshold

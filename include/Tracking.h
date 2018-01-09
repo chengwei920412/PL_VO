@@ -18,6 +18,7 @@
 #include "Frame.h"
 #include "LineFeature.h"
 #include "PointFeature.h"
+#include "Converter.h"
 
 using namespace std;
 
@@ -43,16 +44,22 @@ public:
 
     void Track(const cv::Mat &imagegray, const cv::Mat &imD, const double &timeStamps);
 
-    bool TrackRefFrame(const vector<cv::DMatch> vpointMatches);
+    bool TrackRefFrame(vector<cv::DMatch> &vpointMatches);
+
+    void UpdateMapLPfeature(const vector<cv::DMatch> &vpointMatches, const vector<cv::DMatch> &vlineMatches);
 
 private:
 
-    Camera *mpcamera;
-    Frame *mpcurrentFrame;
-    Frame *mplastFrame;
-    LineFeature *mplineFeature;
-    PointFeature *mppointFeature;
-    Map *mpMap;
+    void UpdateMapPointfeature(const vector<cv::DMatch> &vpointMatches);
+
+    void UpdateMapLinefeature(const vector<cv::DMatch> &vlineMatches);
+
+    Camera *mpcamera = nullptr;
+    Frame *mpcurrentFrame = nullptr;
+    Frame *mplastFrame = nullptr;
+    LineFeature *mpLineFeature = nullptr;
+    PointFeature *mpPointFeature = nullptr;
+    Map *mpMap = nullptr;
 
     cv::Mat mimageGray;
     cv::Mat mimagergb;
@@ -60,6 +67,10 @@ private:
     cv::Mat mlastimagergb;
     cv::Mat mimageDepth;
     cv::Mat mlastimageDepth;
+
+    size_t countMapPoint;
+    size_t countMapLine;
+
     mutex mMutex;
 
 }; // class Tracking

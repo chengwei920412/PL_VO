@@ -64,6 +64,10 @@ int main(int argc, char **argv)
         {
             cerr << "failed to load image file " << strSequenceFilename +"/"+ vstrImageFilenamesRGB[i] << endl;
         }
+        if (imDepth.empty())
+        {
+            cerr << "failed to load image file " << strSequenceFilename +"/"+ vstrImageFilenamesD[i] << endl;
+        }
         vo.TrackRGBD(imRGB, imDepth, imagetimestamps);
     }
 

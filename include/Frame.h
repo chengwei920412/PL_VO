@@ -5,6 +5,7 @@
 #ifndef PL_VO_FRAME_H
 #define PL_VO_FRAME_H
 
+#include <future>
 #include <line_descriptor_custom.hpp>
 #include <sophus/se3.h>
 #include <sophus/so3.h>
@@ -57,11 +58,14 @@ public:
 
     double FindDepth(const cv::Point2f &point, const cv::Mat &imagedepth);
 
-    void UnprojectStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> vpointMatches, const vector<cv::DMatch> vlineMatches);
+    void UnprojectStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> vpointMatches, const vector<cv::DMatch> vlineMatches,
+                         const bool &bcurframe);
 
-    Camera *mpCamera;
-    LineFeature *mpLineFeature;
-    PointFeature *mpPointFeature;
+    void MapLinePointShow();
+
+    Camera *mpCamera = nullptr;
+    LineFeature *mpLineFeature = nullptr;
+    PointFeature *mpPointFeature = nullptr;
 
     double mtimeStamp;
 
@@ -85,9 +89,9 @@ private:
 
     void UndistortLineFeature();
 
-    void UnprojectPointStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> vpointMatches);
+    void UnprojectPointStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> &vpointMatches, const bool &bcurframe);
 
-    void UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> vlineMatches);
+    void UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> &vlineMatches, const bool &bcurframe);
 
     static size_t gCount;
     size_t mID;
