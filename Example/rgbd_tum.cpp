@@ -27,9 +27,9 @@ int main(int argc, char **argv)
     vector<string> vstrImageFilenamesD;
     vector<double> vTimestamps;
 
-    string strAssociationFilename("/home/rain/workspace/DataSets/rgbd_dataset_freiburg2_desk/associate.txt");
-    string strSequenceFilename("/home/rain/workspace/DataSets/rgbd_dataset_freiburg2_desk");
-    string strSettingsFile("../Example/TUM2.yaml");
+    string strAssociationFilename("/home/rain/workspace/DataSets/rgbd_dataset_freiburg1_desk/associate.txt");
+    string strSequenceFilename("/home/rain/workspace/DataSets/rgbd_dataset_freiburg1_desk");
+    string strSettingsFile("../Example/TUM1.yaml");
 
     cout << "datasets asscociateion file: " << strAssociationFilename << endl;
     cout << "datasets sequence file: " << strSequenceFilename << endl;
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
         vo.TrackRGBD(imRGB, imDepth, imagetimestamps);
     }
 
-    vo.SaveTrajectory("tum_trajectory.txt");
+    vo.SaveTrajectory("tum_trajectory2.txt");
 
 }
 

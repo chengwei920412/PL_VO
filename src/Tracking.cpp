@@ -27,6 +27,13 @@ void Tracking::SetMap(Map *pMap)
     mpMap = pMap;
 }
 
+// just use for the test.
+void Tracking::SetCurLastFrame(Frame *pcurFrame, Frame *plastFrame)
+{
+    mpcurrentFrame = pcurFrame;
+    mplastFrame = plastFrame;
+}
+
 void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &timeStamps)
 {
     mimageGray = imagergb.clone();
@@ -88,18 +95,20 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
 
         mpcurrentFrame->MapLinePointShow();
 
+        Optimizer::PoseOptimization(mpcurrentFrame);
+
         cout << mpcurrentFrame->Tcw << endl;
 
         cv::Mat showimg;
         cv::drawMatches(mlastimagergb, mplastFrame->mvKeyPoint, mimagergb, mpcurrentFrame->mvKeyPoint,
                         vpointRefineMatches, showimg);
 
-//        std::vector<char> mask(vlineRefineMatches.size(), 1);
-//        cv::line_descriptor::drawLineMatches(mlastimagergb, mplastFrame->mvKeyLine, mimagergb, mpcurrentFrame->mvKeyLine,
-//                                             vlineRefineMatches, showimg,  cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
-//                                             cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
+        std::vector<char> mask(vlineRefineMatches.size(), 1);
+        cv::line_descriptor::drawLineMatches(mlastimagergb, mplastFrame->mvKeyLine, mimagergb, mpcurrentFrame->mvKeyLine,
+                                             vlineRefineMatches, showimg,  cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
+                                             cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
         cv::imshow(" ", showimg);
-        cv::waitKey(0);
+        cv::waitKey(5);
     }
 
     mpMap->mlpFrames.push_back(mpcurrentFrame);
@@ -123,11 +132,11 @@ bool Tracking::TrackRefFrame(vector<cv::DMatch> &vpointMatches)
             continue;
 
         Eigen::Vector3d Point3dw;
-        Point3dw = mpcamera->Pixwl2World(Converter::toVector2d(mplastFrame->mvKeyPoint[match.queryIdx].pt),
+        Point3dw = mpcamera->Pixwl2World(Converter::toVector2d(mplastFrame->mvKeyPointUn[match.queryIdx].pt),
                                          mplastFrame->Tcw.so3().unit_quaternion(), mplastFrame->Tcw.translation(), d);
 
         vpts3d.push_back(Converter::toCvPoint3f(Point3dw));
-        vpts2d.push_back(mpcurrentFrame->mvKeyPoint[match.trainIdx].pt);
+        vpts2d.push_back(mpcurrentFrame->mvKeyPointUn[match.trainIdx].pt);
     }
 
     cv::Mat rvec, tvec;
@@ -205,6 +214,12 @@ void Tracking::UpdateMapPointfeature(const vector<cv::DMatch> &vpointMatches)
             pMapPoint->mmpPointFeature2D[mpcurrentFrame->GetFrameID()] = pcurPointFeature;
             pMapPoint->mlpFrameinvert.push_back(mpcurrentFrame);
 
+            if (pMapPoint->mPosew.isZero())
+            {
+                pMapPoint->mPosew = pcurPointFeature->mPoint3dw;
+//                cout << "use the current frame's observation to updae the MapPoint: " << pcurPointFeature->mPoint3dw.transpose() << endl;
+            }
+
             mpcurrentFrame->mvpMapPoint.push_back(pMapPoint);
             pcurPointFeature->mpMapPoint = pMapPoint;
 
@@ -271,6 +286,22 @@ void Tracking::UpdateMapLinefeature(const vector<cv::DMatch> &vlineMatches)
 
             pMapLine->mmpLineFeature2D[mpcurrentFrame->GetFrameID()] = pcurLineFeature;
             pMapLine->mlpFrameinvert.push_back(mpcurrentFrame);
+
+            if (pMapLine->mPoseStartw.isZero() || pMapLine->mPoseEndw.isZero())
+            {
+//                cout << "use the current frame's observation to updae the MapLine: " << pcurLineFeature->mStartPoint3dw.transpose() << endl;
+//                cout << "use the current frame's observation to updae the MapLine: " << pcurLineFeature->mEndPoint3dw.transpose() << endl;
+
+                if (!pcurLineFeature->mStartPoint3dw.isZero())
+                {
+                    pMapLine->mPoseStartw = pcurLineFeature->mStartPoint3dw;
+                }
+
+                if (!pcurLineFeature->mEndPoint3dw.isZero())
+                {
+                    pMapLine->mPoseEndw = pcurLineFeature->mEndPoint3dw;
+                }
+            }
 
             mpcurrentFrame->mvpMapLine.push_back(pMapLine);
             pcurLineFeature->mpMapLine = pMapLine;

@@ -6,6 +6,8 @@
 #include <Converter.h>
 #include "Frame.h"
 #include "Optimizer.h"
+#include "Tracking.h"
+#include "Map.h"
 
 
 int main(int argc, char* argv[])
@@ -15,10 +17,15 @@ int main(int argc, char* argv[])
     PL_VO::LineFeature *plineFeature;
     PL_VO::Frame *pcurrentFrame;
     PL_VO::Frame *plastFrame;
+    PL_VO::Tracking *pTracking;
+    PL_VO::Map *pMap;
 
     plineFeature = new(PL_VO::LineFeature);
     ppointFeature = new(PL_VO::PointFeature);
     pcamera = new PL_VO::Camera("../Example/TUM2.yaml");
+    pMap = new PL_VO::Map;
+    pTracking = new PL_VO::Tracking(pcamera);
+    pTracking->SetMap(pMap);
 
     const string strimg1FilePath = "../test/test_line_match/1.png";
     const string strimg2FilePath = "../test/test_line_match/2.png";
@@ -63,20 +70,24 @@ int main(int argc, char* argv[])
     pcurrentFrame->UndistortKeyFeature();
     plastFrame->UndistortKeyFeature();
 
-    for (size_t i = 0; i < pcurrentFrame->mvKeyPoint.size(); i++)
     {
-        cv::circle(imagepointshow, pcurrentFrame->mvKeyPoint[i].pt, 2, cv::Scalar(255, 0, 0), 2);
-    }
-    for (size_t i = 0; i < pcurrentFrame->mvKeyPointUn.size(); i++)
-    {
-        cv::circle(imagepointsunhow, pcurrentFrame->mvKeyPointUn[i].pt, 2, cv::Scalar(255, 0, 0), 2);
+//        for (size_t i = 0; i < pcurrentFrame->mvKeyPoint.size(); i++)
+//        {
+//            cv::circle(imagepointshow, pcurrentFrame->mvKeyPoint[i].pt, 2, cv::Scalar(255, 0, 0), 2);
+//        }
+//        for (size_t i = 0; i < pcurrentFrame->mvKeyPointUn.size(); i++)
+//        {
+//            cv::circle(imagepointsunhow, pcurrentFrame->mvKeyPointUn[i].pt, 2, cv::Scalar(255, 0, 0), 2);
+//        }
+//
+//        cv::line_descriptor::drawKeylines(img2, pcurrentFrame->mvKeyLine, imagelineshow);
+//        cv::line_descriptor::drawKeylines(img2, pcurrentFrame->mvKeyLineUn, imagelineunshow);
+//
+//        cv::imshow(" image lineun show ", imagelineunshow);
+//        cv::imshow(" image line show ", imagelineshow);
     }
 
-    cv::line_descriptor::drawKeylines(img2, pcurrentFrame->mvKeyLine, imagelineshow);
-    cv::line_descriptor::drawKeylines(img2, pcurrentFrame->mvKeyLineUn, imagelineunshow);
 
-    cv::imshow(" image lineun show ", imagelineunshow);
-    cv::imshow(" image line show ", imagelineshow);
 
     {
         vector<cv::Point3d> vpts3d;
@@ -112,9 +123,18 @@ int main(int argc, char* argv[])
     } // -0.12910648864000002  -0.011553516588 0.056891304389999994
 
 
-    pcurrentFrame->UnprojectStereo(img2depth, vpointRefineMatches, vlineRefineMatches);
+//    pcurrentFrame->UnprojectStereo(img2depth, vpointRefineMatches, vlineRefineMatches);
+
+    pcurrentFrame->UnprojectStereo(img2depth, vpointRefineMatches, vlineRefineMatches, true);
+
+    plastFrame->UnprojectStereo(img1depth, vpointRefineMatches, vlineRefineMatches, false);
+
+    pTracking->SetCurLastFrame(pcurrentFrame, plastFrame);
+
+    pTracking->UpdateMapLPfeature(vpointRefineMatches, vlineRefineMatches);
 
     PL_VO::Optimizer::PoseOptimization(pcurrentFrame);
+
 
     cv::Mat showimg;
 //    cv::drawMatches(img1, plastFrame->mvKeyPointUn, img2, pcurrentFrame->mvKeyPointUn, vpointRefineMatches, showimg);

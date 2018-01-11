@@ -39,7 +39,7 @@ public:
 
     const size_t GetFrameID() const;
 
-    Eigen::Vector3d getCameraCenter();
+    Eigen::Vector3d GetCameraCenter();
 
     void detectFeature(const cv::Mat &imagergb, const cv::Mat &imagedepth);
 

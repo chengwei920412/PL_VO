@@ -19,6 +19,7 @@
 #include "LineFeature.h"
 #include "PointFeature.h"
 #include "Converter.h"
+#include "Optimizer.h"
 
 using namespace std;
 
@@ -41,6 +42,8 @@ public:
     ~Tracking();
 
     void SetMap(Map *pMap);
+
+    void SetCurLastFrame(Frame *pcurFrame, Frame *plastFrame);
 
     void Track(const cv::Mat &imagegray, const cv::Mat &imD, const double &timeStamps);
 

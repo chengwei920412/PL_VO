@@ -65,3 +65,6 @@ $ make -j2
 line feature detection use the lsd original code and opencv code
 2. **test_line_match** \
 line feature detection and matching use the lsd and lbd algorithm in the opencv.
+2. **test_PLfeature_optimization** \
+the optimization of the point feature and line feature, and just test the two frames. Optimize
+the pose of the MapPoint and MapLine and camera pose.
