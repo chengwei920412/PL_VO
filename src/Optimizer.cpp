@@ -68,11 +68,13 @@ bool ReprojectionErrorSE3::Evaluate(double const *const *parameters, double *res
             // very important! the form of the se3 is the rotation in the front and the transformation in the back
             Jse3.block<2,3>(0,0) = jacobian;
             Jse3.block<2,3>(0,3) = -jacobian*Converter::skew(p);
+
         }
         if(jacobians[1] != nullptr) // the jacobian for the camera pose optimization
         {
             Eigen::Map<Eigen::Matrix<double, 2, 3, Eigen::RowMajor> > Jpoint(jacobians[1]);
             Jpoint = jacobian * quaterd.toRotationMatrix();
+
         }
     }
 
@@ -105,8 +107,8 @@ bool ReprojectionLineErrorSE3::Evaluate(double const *const *parameters, double 
     err[0] = lineCoef[0]*Startpoint2d[0] + lineCoef[1]*Startpoint2d[1] + lineCoef[2];
     err[1] = lineCoef[0]*Endpoint2d[0] + lineCoef[1]*Endpoint2d[1] + lineCoef[2];
 
-    err[0] = err[0]/err.norm();
-    err[1] = err[1]/err.norm();
+//    err[0] = err[0]/err.norm();
+//    err[1] = err[1]/err.norm();
 
     residuals[0] = err[0];
     residuals[1] = err[1];
@@ -129,23 +131,34 @@ bool ReprojectionLineErrorSE3::Evaluate(double const *const *parameters, double 
             Jse3.setZero();
 
             // very important! the form of the se3 is the rotation in the front and the transformation in the back
-            jacobian <<  lineCoef[0]*jacobianStart(0, 0) + lineCoef[1]*jacobianStart(1, 0),
-                         lineCoef[0]*jacobianStart(0, 1) + lineCoef[1]*jacobianStart(1, 1),
-                         lineCoef[0]*jacobianStart(0, 2) + lineCoef[1]*jacobianStart(1, 2),
-                         lineCoef[0]*jacobianEnd(0, 0) + lineCoef[1]*jacobianEnd(1, 0),
-                         lineCoef[0]*jacobianEnd(0, 1) + lineCoef[1]*jacobianEnd(1, 1),
-                         lineCoef[0]*jacobianEnd(0, 2) + lineCoef[1]*jacobianEnd(1, 2);
+            jacobian(0, 0) = lineCoef[0]*jacobianStart(0, 0) + lineCoef[1]*jacobianStart(1, 0);
+            jacobian(0, 1) = lineCoef[0]*jacobianStart(0, 1) + lineCoef[1]*jacobianStart(1, 1);
+            jacobian(0, 2) = lineCoef[0]*jacobianStart(0, 2) + lineCoef[1]*jacobianStart(1, 2);
+            jacobian(1, 0) = lineCoef[0]*jacobianEnd(0, 0) + lineCoef[1]*jacobianEnd(1, 0);
+            jacobian(1, 1) = lineCoef[0]*jacobianEnd(0, 1) + lineCoef[1]*jacobianEnd(1, 1);
+            jacobian(1, 2) = lineCoef[0]*jacobianEnd(0, 2) + lineCoef[1]*jacobianEnd(1, 2);
 
-            Jse3.block<2,3>(0,0) = jacobian;
-            Jse3.block<2,3>(0,3) = -jacobian*(Converter::skew(Startpoint3dC) + Converter::skew(Endpoint3dC));
+            Jse3.block<2, 3>(0, 0) = jacobian;
+            Jse3.block<1, 3>(0, 3) = -jacobian.block<1, 3>(0, 0)*Converter::skew(Startpoint3dC);
+            Jse3.block<1, 3>(1, 3) = -jacobian.block<1, 3>(1, 0)*Converter::skew(Endpoint3dC);
+
+//            cout << "Jse3:" << endl << Jse3 << endl;
         }
+
         if(jacobians[1] != nullptr) // the jacobian for the camera pose optimization
         {
-            Eigen::Map<Eigen::Matrix<double, 2, 3, Eigen::RowMajor> > Jpoint(jacobians[1]);
-            Jpoint = jacobian * quaterd.toRotationMatrix();
+            Eigen::Map<Eigen::Matrix<double, 4, 3, Eigen::RowMajor> > Jpoint(jacobians[1]);
+            Jpoint.setZero();
+
+            Jpoint.block<1, 3>(0, 0) = jacobian.block<1, 3>(0 ,0)*quaterd.toRotationMatrix();
+            Jpoint.block<1, 3>(3, 0) = jacobian.block<1, 3>(1 ,0)*quaterd.toRotationMatrix();
+
+//            cout << "Jpoint: " << endl << Jpoint << endl;
         }
 
     }
+
+    return true;
 
 }
 
@@ -200,6 +213,7 @@ void Optimizer::PoseOptimization(Frame *pFrame)
 {
     Eigen::Matrix3d K;
     K = pFrame->mpCamera->GetCameraIntrinsic();
+    size_t frameID = pFrame->GetFrameID();
 
     cv::Mat extrinsic(7, 1, CV_64FC1);
 
@@ -228,9 +242,9 @@ void Optimizer::PoseOptimization(Frame *pFrame)
         if (pFrame->mvpMapPoint[i]->mPosew.isZero())
             continue;
 
-        Eigen::Vector2d observed = pFrame->mvpMapPoint[i]->mmpPointFeature2D[pFrame->GetFrameID()]->mpixel;
+        Eigen::Vector2d observed = pFrame->mvpMapPoint[i]->mmpPointFeature2D[frameID]->mpixel;
 
-        ceres::CostFunction* costfunction = new ReprojectionErrorSE3(K(0, 0), K(1, 1),
+        ceres::CostFunction *costfunction = new ReprojectionErrorSE3(K(0, 0), K(1, 1),
                                                                      K(0, 2), K(1, 2),
                                                                      observed[0], observed[1]);
 
@@ -241,15 +255,40 @@ void Optimizer::PoseOptimization(Frame *pFrame)
         problem.AddParameterBlock(&pFrame->mvpMapPoint[i]->mPosew.x(), 3);
     }
 
-    RemoveOutliers(problem, 10);
+    for (int i = 0; i < pFrame->mvpMapLine.size(); i++)
+    {
+        if (pFrame->mvpMapLine[i]->mPoseStartw.isZero() || pFrame->mvpMapLine[i]->mPoseEndw.isZero())
+            continue;
 
-//    vector<double> vresiduals;
-//    vresiduals = GetReprojectionErrorNorms(problem);
-//
-//    for (auto residual : vresiduals)
-//    {
-//        cout << residual << endl;
-//    }
+        Eigen::Vector2d observedStart;
+        Eigen::Vector2d observedEnd;
+        Eigen::Vector3d observedLineCoef;
+
+        observedStart = pFrame->mvpMapLine[i]->mmpLineFeature2D[frameID]->mStartpixel;
+        observedEnd = pFrame->mvpMapLine[i]->mmpLineFeature2D[frameID]->mEndpixel;
+        observedLineCoef = pFrame->mvpMapLine[i]->mmpLineFeature2D[frameID]->mLineCoef;
+
+        ceres::CostFunction *costFunction = new ReprojectionLineErrorSE3(K(0, 0), K(1, 1), K(0, 2), K(1, 2),
+                                                                         observedStart, observedEnd, observedLineCoef);
+        double *linePointPosew = &pFrame->mvpMapLine[i]->mPoseStartw.x();
+        linePointPosew[3] = pFrame->mvpMapLine[i]->mPoseEndw.x();
+        linePointPosew[4] = pFrame->mvpMapLine[i]->mPoseEndw.y();
+        linePointPosew[5] = pFrame->mvpMapLine[i]->mPoseEndw.z();
+
+        problem.AddResidualBlock(costFunction, lossfunction, extrinsic.ptr<double>(), linePointPosew);
+
+        problem.AddParameterBlock(linePointPosew, 6);
+    }
+
+    RemoveOutliers(problem, 25);
+
+    vector<double> vresiduals;
+    vresiduals = GetReprojectionErrorNorms(problem);
+
+    for (auto residual : vresiduals)
+    {
+        cout << residual << endl;
+    }
 
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_SCHUR;
@@ -277,7 +316,7 @@ void Optimizer::PoseOptimization(Frame *pFrame)
 
     if (!summary.IsSolutionUsable())
     {
-        cout << "Bundle Adjustment failed." << std::endl;
+        cout << "Bundle Adjustment failed." << endl;
     }
     else
     {
