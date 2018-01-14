@@ -5,6 +5,7 @@
 #ifndef PL_VO_OPTIMIZER_H
 #define PL_VO_OPTIMIZER_H
 
+#include <math.h>
 #include <eigen3/Eigen/Dense>
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
@@ -64,7 +65,7 @@ public:
  *        the 7 is number of the camera pose parameters
  *        the 6 is number of the MapLine pose parameters and  the end point and the start point of the line
  */
-class ReprojectionLineErrorSE3 : public ceres::SizedCostFunction<2, 7, 6>
+class ReprojectionLineErrorSE3 : public ceres::SizedCostFunction<2, 7, 3, 3>
 {
 private:
 

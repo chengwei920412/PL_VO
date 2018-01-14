@@ -123,6 +123,7 @@ bool Tracking::TrackRefFrame(vector<cv::DMatch> &vpointMatches)
 {
     vector<cv::Point3d> vpts3d;
     vector<cv::Point2d> vpts2d;
+    Sophus::SE3 PoseInc;
 
     for (auto match:vpointMatches)
     {
@@ -133,7 +134,7 @@ bool Tracking::TrackRefFrame(vector<cv::DMatch> &vpointMatches)
 
         Eigen::Vector3d Point3dw;
         Point3dw = mpcamera->Pixwl2World(Converter::toVector2d(mplastFrame->mvKeyPointUn[match.queryIdx].pt),
-                                         mplastFrame->Tcw.so3().unit_quaternion(), mplastFrame->Tcw.translation(), d);
+                                         Eigen::Quaterniond::Identity(), Eigen::Vector3d(0, 0, 0), d);
 
         vpts3d.push_back(Converter::toCvPoint3f(Point3dw));
         vpts2d.push_back(mpcurrentFrame->mvKeyPointUn[match.trainIdx].pt);
@@ -153,8 +154,10 @@ bool Tracking::TrackRefFrame(vector<cv::DMatch> &vpointMatches)
 
     vpointMatches.resize(inliers.size());
 
-    mpcurrentFrame->Tcw = Sophus::SE3(Sophus::SO3(rvec.at<double>(0,0), rvec.at<double>(1,0), rvec.at<double>(2,0)),
-                                      Converter::toVector3d(tvec));
+    PoseInc = Sophus::SE3(Sophus::SO3(rvec.at<double>(0,0), rvec.at<double>(1,0), rvec.at<double>(2,0)),
+                          Converter::toVector3d(tvec));
+
+    mpcurrentFrame->Tcw = mplastFrame->Tcw*PoseInc;
 }
 
 void Tracking::UpdateMapPointfeature(const vector<cv::DMatch> &vpointMatches)

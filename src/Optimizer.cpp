@@ -69,12 +69,16 @@ bool ReprojectionErrorSE3::Evaluate(double const *const *parameters, double *res
             Jse3.block<2,3>(0,0) = jacobian;
             Jse3.block<2,3>(0,3) = -jacobian*Converter::skew(p);
 
+            CHECK(fabs(Jse3.maxCoeff()) < 1e8);
+            CHECK(fabs(Jse3.minCoeff()) < 1e8);
         }
         if(jacobians[1] != nullptr) // the jacobian for the camera pose optimization
         {
             Eigen::Map<Eigen::Matrix<double, 2, 3, Eigen::RowMajor> > Jpoint(jacobians[1]);
             Jpoint = jacobian * quaterd.toRotationMatrix();
 
+            CHECK(fabs(Jpoint.maxCoeff()) < 1e8);
+            CHECK(fabs(Jpoint.minCoeff()) < 1e8);
         }
     }
 
@@ -86,7 +90,7 @@ bool ReprojectionLineErrorSE3::Evaluate(double const *const *parameters, double 
     Eigen::Map<const Eigen::Quaterniond> quaterd(parameters[0]);
     Eigen::Map<const Eigen::Vector3d> trans(parameters[0] + 4);
     Eigen::Map<const Eigen::Vector3d> Startpoint3d(parameters[1]);
-    Eigen::Map<const Eigen::Vector3d> Endpoint3d(parameters[1]+3);
+    Eigen::Map<const Eigen::Vector3d> Endpoint3d(parameters[2]);
 
     Eigen::Vector3d Startpoint3dC;
     Eigen::Vector3d Endpoint3dC;
@@ -131,29 +135,41 @@ bool ReprojectionLineErrorSE3::Evaluate(double const *const *parameters, double 
             Jse3.setZero();
 
             // very important! the form of the se3 is the rotation in the front and the transformation in the back
-            jacobian(0, 0) = lineCoef[0]*jacobianStart(0, 0) + lineCoef[1]*jacobianStart(1, 0);
-            jacobian(0, 1) = lineCoef[0]*jacobianStart(0, 1) + lineCoef[1]*jacobianStart(1, 1);
+            jacobian(0, 0) = lineCoef[0]*jacobianStart(0, 0);
+            jacobian(0, 1) = lineCoef[1]*jacobianStart(1, 1);
             jacobian(0, 2) = lineCoef[0]*jacobianStart(0, 2) + lineCoef[1]*jacobianStart(1, 2);
-            jacobian(1, 0) = lineCoef[0]*jacobianEnd(0, 0) + lineCoef[1]*jacobianEnd(1, 0);
-            jacobian(1, 1) = lineCoef[0]*jacobianEnd(0, 1) + lineCoef[1]*jacobianEnd(1, 1);
+            jacobian(1, 0) = lineCoef[0]*jacobianEnd(0, 0);
+            jacobian(1, 1) = lineCoef[1]*jacobianEnd(1, 1);
             jacobian(1, 2) = lineCoef[0]*jacobianEnd(0, 2) + lineCoef[1]*jacobianEnd(1, 2);
 
             Jse3.block<2, 3>(0, 0) = jacobian;
             Jse3.block<1, 3>(0, 3) = -jacobian.block<1, 3>(0, 0)*Converter::skew(Startpoint3dC);
             Jse3.block<1, 3>(1, 3) = -jacobian.block<1, 3>(1, 0)*Converter::skew(Endpoint3dC);
 
-//            cout << "Jse3:" << endl << Jse3 << endl;
+            CHECK(fabs(Jse3.maxCoeff()) < 1e8);
+            CHECK(fabs(Jse3.minCoeff()) < 1e8);
         }
 
         if(jacobians[1] != nullptr) // the jacobian for the camera pose optimization
         {
-            Eigen::Map<Eigen::Matrix<double, 4, 3, Eigen::RowMajor> > Jpoint(jacobians[1]);
+            Eigen::Map<Eigen::Matrix<double, 2, 3, Eigen::RowMajor> > Jpoint(jacobians[1]);
             Jpoint.setZero();
 
             Jpoint.block<1, 3>(0, 0) = jacobian.block<1, 3>(0 ,0)*quaterd.toRotationMatrix();
-            Jpoint.block<1, 3>(3, 0) = jacobian.block<1, 3>(1 ,0)*quaterd.toRotationMatrix();
 
-//            cout << "Jpoint: " << endl << Jpoint << endl;
+            CHECK(fabs(Jpoint.maxCoeff()) < 1e8);
+            CHECK(fabs(Jpoint.minCoeff()) < 1e8);
+        }
+
+        if (jacobians[2] != nullptr)
+        {
+            Eigen::Map<Eigen::Matrix<double, 2, 3, Eigen::RowMajor> > Jpoint(jacobians[2]);
+            Jpoint.setZero();
+
+            Jpoint.block<1, 3>(1, 0) = jacobian.block<1, 3>(1 ,0)*quaterd.toRotationMatrix();
+
+            CHECK(fabs(Jpoint.maxCoeff()) < 1e8);
+            CHECK(fabs(Jpoint.minCoeff()) < 1e8);
         }
 
     }
@@ -227,16 +243,15 @@ void Optimizer::PoseOptimization(Frame *pFrame)
         extrinsic.ptr<double>()[6] = pFrame->Tcw.translation()[2];
     }
 
-//    cout << "extrinsic: " <<extrinsic.t() << endl;
-
     cout << pFrame->Tcw << endl;
 
     ceres::Problem problem;
 
     problem.AddParameterBlock(extrinsic.ptr<double>(), 7, new PoseLocalParameterization());
 
-    ceres::LossFunction* lossfunction = new ceres::HuberLoss(1);   // loss function make bundle adjustment robuster.
+    ceres::LossFunction* lossfunction = new ceres::CauchyLoss(1);   // loss function make bundle adjustment robuster. HuberLoss
 
+    // add the MapPoint parameterblocks and residuals
     for (int i = 0; i < pFrame->mvpMapPoint.size(); i++)
     {
         if (pFrame->mvpMapPoint[i]->mPosew.isZero())
@@ -255,50 +270,54 @@ void Optimizer::PoseOptimization(Frame *pFrame)
         problem.AddParameterBlock(&pFrame->mvpMapPoint[i]->mPosew.x(), 3);
     }
 
-    for (int i = 0; i < pFrame->mvpMapLine.size(); i++)
+    // add the MapLine parameterblocks and residuals
+    for (auto pMapLine : pFrame->mvpMapLine)
     {
-        if (pFrame->mvpMapLine[i]->mPoseStartw.isZero() || pFrame->mvpMapLine[i]->mPoseEndw.isZero())
+
+        if (pMapLine->mPoseStartw.isZero() || pMapLine->mPoseEndw.isZero())
             continue;
 
         Eigen::Vector2d observedStart;
         Eigen::Vector2d observedEnd;
         Eigen::Vector3d observedLineCoef;
 
-        observedStart = pFrame->mvpMapLine[i]->mmpLineFeature2D[frameID]->mStartpixel;
-        observedEnd = pFrame->mvpMapLine[i]->mmpLineFeature2D[frameID]->mEndpixel;
-        observedLineCoef = pFrame->mvpMapLine[i]->mmpLineFeature2D[frameID]->mLineCoef;
+        observedStart = pMapLine->mmpLineFeature2D[frameID]->mStartpixel;
+        observedEnd = pMapLine->mmpLineFeature2D[frameID]->mEndpixel;
+        observedLineCoef = pMapLine->mmpLineFeature2D[frameID]->mLineCoef;
 
         ceres::CostFunction *costFunction = new ReprojectionLineErrorSE3(K(0, 0), K(1, 1), K(0, 2), K(1, 2),
                                                                          observedStart, observedEnd, observedLineCoef);
-        double *linePointPosew = &pFrame->mvpMapLine[i]->mPoseStartw.x();
-        linePointPosew[3] = pFrame->mvpMapLine[i]->mPoseEndw.x();
-        linePointPosew[4] = pFrame->mvpMapLine[i]->mPoseEndw.y();
-        linePointPosew[5] = pFrame->mvpMapLine[i]->mPoseEndw.z();
 
-        problem.AddResidualBlock(costFunction, lossfunction, extrinsic.ptr<double>(), linePointPosew);
+        problem.AddResidualBlock(costFunction, lossfunction, extrinsic.ptr<double>(),
+                                 &pMapLine->mPoseStartw.x(),
+                                 &pMapLine->mPoseEndw.x());
 
-        problem.AddParameterBlock(linePointPosew, 6);
+        problem.AddParameterBlock(&pMapLine->mPoseStartw.x(), 3);
+        problem.AddParameterBlock(&pMapLine->mPoseEndw.x(), 3);
+
+//        cout << pMapLine->mID << " : "
+//             << pMapLine->mPoseStartw.transpose() << " | "
+//             << pMapLine->mPoseEndw.transpose() << endl;
     }
 
     RemoveOutliers(problem, 25);
 
-    vector<double> vresiduals;
-    vresiduals = GetReprojectionErrorNorms(problem);
-
-    for (auto residual : vresiduals)
-    {
-        cout << residual << endl;
-    }
+//    vector<double> vresiduals;
+//    vresiduals = GetReprojectionErrorNorms(problem);
+//
+//    for (auto residual : vresiduals)
+//    {
+//        cout << residual << endl;
+//    }
 
     ceres::Solver::Options options;
+    options.num_threads = 4;
     options.linear_solver_type = ceres::DENSE_SCHUR;
     options.minimizer_progress_to_stdout = true;
     options.max_solver_time_in_seconds = 0.1;
 
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-
-//    cout << "extrinsic: " <<extrinsic.t() << endl;
 
     {
         // it is very important that the scale data is the first position in the quaternion data type in the eigen
@@ -313,6 +332,15 @@ void Optimizer::PoseOptimization(Frame *pFrame)
     }
 
     cout << pFrame->Tcw << endl;
+
+//    for (auto pMapLine : pFrame->mvpMapLine)
+//    {
+//        if (pMapLine->mPoseStartw.isZero() || pMapLine->mPoseEndw.isZero())
+//            continue;
+//        cout << pMapLine->mID << " : "
+//             << pMapLine->mPoseStartw.transpose() << " | "
+//             << pMapLine->mPoseEndw.transpose() << endl;
+//    }
 
     if (!summary.IsSolutionUsable())
     {
@@ -334,6 +362,6 @@ void Optimizer::PoseOptimization(Frame *pFrame)
 //    {
 //        cout << residual << endl;
 //    }
-}
+} // void Optimizer::PoseOptimization(Frame *pFrame)
 
 } // namespace PL_VO
