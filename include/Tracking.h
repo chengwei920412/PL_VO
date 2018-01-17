@@ -47,7 +47,7 @@ public:
 
     void Track(const cv::Mat &imagegray, const cv::Mat &imD, const double &timeStamps);
 
-    bool TrackRefFrame(vector<cv::DMatch> &vpointMatches);
+    bool TrackRefFrame(vector<cv::DMatch> &vpointMatches, vector<cv::DMatch> &vlineMatches);
 
     void UpdateMapLPfeature(const vector<cv::DMatch> &vpointMatches, const vector<cv::DMatch> &vlineMatches);
 

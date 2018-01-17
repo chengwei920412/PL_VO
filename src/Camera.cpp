@@ -28,6 +28,8 @@ Camera::Camera(const string &strSettingsFile)
     mp2 = fsSettings["Camera.p2"];
     mk3 = fsSettings["Camera.k3"];
 
+    LOG_IF(WARNING, mk3 ==0) << "the camera calibration parameter(k3) is zero";
+
     mImageHeight = fsSettings["Camera.height"];
     mImageWidth = fsSettings["Camera.width"];
 

@@ -84,18 +84,17 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
 
         // use the pnp and point match to track the reference frame
         // use the pnp ransanc to remove the outliers
-        TrackRefFrame(vpointRefineMatches);
+        TrackRefFrame(vpointRefineMatches, vlineRefineMatches);
 
         mpcurrentFrame->UnprojectStereo(mimageDepth, vpointRefineMatches, vlineRefineMatches, true);
 
         mplastFrame->UnprojectStereo(mlastimageDepth, vpointRefineMatches, vlineRefineMatches, false);
 
-
         UpdateMapLPfeature(vpointRefineMatches, vlineRefineMatches);
 
-        mpcurrentFrame->MapLinePointShow();
+//        mpcurrentFrame->MapLinePointShow();
 
-        Optimizer::PoseOptimization(mpcurrentFrame);
+//        Optimizer::PoseOptimization(mpcurrentFrame);
 
         cout << mpcurrentFrame->Tcw << endl;
 
@@ -119,45 +118,131 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
     mlastimageDepth = mimageDepth.clone();
 }
 
-bool Tracking::TrackRefFrame(vector<cv::DMatch> &vpointMatches)
+bool Tracking::TrackRefFrame(vector<cv::DMatch> &vpointMatches, vector<cv::DMatch> &vlineMatches)
 {
-    vector<cv::Point3d> vpts3d;
-    vector<cv::Point2d> vpts2d;
     Sophus::SE3 PoseInc;
 
-    for (auto match:vpointMatches)
+    vector<PointFeature2D> vPointFeature2D;
+    vector<LineFeature2D *> vpLineFeature2D;
+    vector<cv::Point3d> vPoint3d;
+    vector<cv::Point2d> vPoint2d;
+    vector<cv::Point2d> vLineStart2d;
+    vector<cv::Point2d> vLineEnd2d;
+    vector<cv::DMatch> vpointMatchesUnzero;
+
     {
+        cv::KeyPoint kp;
 
-        double d = mplastFrame->FindDepth(mplastFrame->mvKeyPoint[match.queryIdx].pt, mlastimageDepth);
-        if (d < 0)
-            continue;
+        for (auto match : vpointMatches)
+        {
+            kp = mplastFrame->mvKeyPointUn[match.queryIdx];
 
-        Eigen::Vector3d Point3dw;
-        Point3dw = mpcamera->Pixwl2World(Converter::toVector2d(mplastFrame->mvKeyPointUn[match.queryIdx].pt),
-                                         Eigen::Quaterniond::Identity(), Eigen::Vector3d(0, 0, 0), d);
+            Eigen::Vector3d Point3dw;
+            double d = mplastFrame->FindDepth(mplastFrame->mvKeyPoint[match.queryIdx].pt, mlastimageDepth);
 
-        vpts3d.push_back(Converter::toCvPoint3f(Point3dw));
-        vpts2d.push_back(mpcurrentFrame->mvKeyPointUn[match.trainIdx].pt);
+            if (d <= 0)
+                continue;
+
+            Point3dw = mpcamera->Pixwl2World(Converter::toVector2d(kp.pt), Eigen::Quaterniond::Identity(),
+                                             Eigen::Vector3d(0, 0, 0), d);
+
+            vPoint3d.emplace_back(Converter::toCvPoint3f(Point3dw));
+            vPoint2d.emplace_back(mpcurrentFrame->mvKeyPointUn[match.trainIdx].pt);
+
+            vpointMatchesUnzero.emplace_back(match);
+
+        } // for (auto match : vpointMatches)
     }
+
+
+    {
+        for (auto match : vlineMatches)
+        {
+            cv::line_descriptor::KeyLine klUn; // in the last frame
+            cv::line_descriptor::KeyLine kl; // in the last frame
+            cv::line_descriptor::KeyLine kl2Un; // in the current frame
+
+            klUn = mplastFrame->mvKeyLineUn[match.queryIdx];
+            kl = mplastFrame->mvKeyLine[match.queryIdx];
+
+
+            cv::Point2f startPointUn2f;
+            cv::Point2f endPointUn2f;
+            cv::Point2f startPoint2f;
+            cv::Point2f endPoint2f;
+
+            startPointUn2f = cv::Point2f(klUn.startPointX, klUn.startPointY);
+            endPointUn2f = cv::Point2f(klUn.endPointX, klUn.endPointY);
+
+            startPoint2f = cv::Point2f(kl.startPointX, kl.startPointY);
+            endPoint2f = cv::Point2f(kl.endPointX, kl.endPointY);
+
+            // !!!notice: use the distored image
+            double d1 = mplastFrame->FindDepth(startPoint2f, mlastimageDepth);
+            double d2 = mplastFrame->FindDepth(endPoint2f, mlastimageDepth);
+
+            Eigen::Vector3d startPoint3dw;
+            Eigen::Vector3d endPoint3dw;
+
+            if (d1 <= 0 || d2 <= 0)
+                continue;
+
+
+            startPoint3dw = mpcamera->Pixwl2World(Converter::toVector2d(startPointUn2f), Eigen::Quaterniond::Identity(),
+                                                  Eigen::Vector3d(0, 0, 0), d1);
+
+            endPoint3dw = mpcamera->Pixwl2World(Converter::toVector2d(endPointUn2f), Eigen::Quaterniond::Identity(),
+                                                Eigen::Vector3d(0, 0, 0), d2);
+
+            LineFeature2D *plineFeature2D = new LineFeature2D(Converter::toVector2d(startPointUn2f), Converter::toVector2d(endPointUn2f),
+                                                        kl.octave, kl.response, match.queryIdx);
+
+            plineFeature2D->mStartPoint3dw = startPoint3dw;
+            plineFeature2D->mEndPoint3dw = endPoint3dw;
+
+            vpLineFeature2D.push_back(plineFeature2D);
+
+            // the observed keyline in the current frame
+            kl2Un = mpcurrentFrame->mvKeyLineUn[match.trainIdx];
+            vLineStart2d.emplace_back(cv::Point2d((double)kl2Un.startPointX, (double)kl2Un.startPointY));
+            vLineEnd2d.emplace_back(cv::Point2d((double)kl2Un.endPointX, (double)kl2Un.endPointY));
+        }
+    }
+
 
     cv::Mat rvec, tvec;
     vector<int> inliers;
-    cv::solvePnPRansac(vpts3d, vpts2d, Converter::toCvMat(mpcamera->GetCameraIntrinsic()), cv::Mat(),
+    cv::solvePnPRansac(vPoint3d, vPoint2d, Converter::toCvMat(mpcamera->GetCameraIntrinsic()), cv::Mat(),
                        rvec, tvec, false, 100, 4.0, 0.99, inliers);
 
     int idx = 0;
     for (auto inlier : inliers)
     {
-        vpointMatches[idx] = vpointMatches[inlier];
+        vpointMatchesUnzero[idx] = vpointMatchesUnzero[inlier];
         idx++;
     }
 
-    vpointMatches.resize(inliers.size());
+    vpointMatchesUnzero.resize(inliers.size());
 
     PoseInc = Sophus::SE3(Sophus::SO3(rvec.at<double>(0,0), rvec.at<double>(1,0), rvec.at<double>(2,0)),
                           Converter::toVector3d(tvec));
 
+    cout <<  "PoseInc: " << PoseInc << endl;
+
+    Optimizer::PnPResultOptimization(mpcurrentFrame, PoseInc, vPoint3d, vPoint2d, vpLineFeature2D,
+                                     vLineStart2d, vLineEnd2d);
+
     mpcurrentFrame->Tcw = mplastFrame->Tcw*PoseInc;
+
+    {
+        for (vector<LineFeature2D*>::iterator it = vpLineFeature2D.begin(); it != vpLineFeature2D.end(); it ++)
+            if (NULL != *it)
+            {
+                delete *it;
+                *it = NULL;
+            }
+        vpLineFeature2D.clear();
+    }
 }
 
 void Tracking::UpdateMapPointfeature(const vector<cv::DMatch> &vpointMatches)
@@ -212,6 +297,12 @@ void Tracking::UpdateMapPointfeature(const vector<cv::DMatch> &vpointMatches)
             if (pcurPointFeature->midxMatch != match.trainIdx)
             {
                 LOG(ERROR) << "the idx of the PointFeature 2d is wrong " << endl;
+            }
+
+            auto it = pMapPoint->mmpPointFeature2D.find(mpcurrentFrame->GetFrameID());
+            if (it != pMapPoint->mmpPointFeature2D.end())
+            {
+                LOG(ERROR) << "the point feature2d exist " << endl;
             }
 
             pMapPoint->mmpPointFeature2D[mpcurrentFrame->GetFrameID()] = pcurPointFeature;
@@ -285,6 +376,12 @@ void Tracking::UpdateMapLinefeature(const vector<cv::DMatch> &vlineMatches)
             if (pcurLineFeature->midxMatch != match.trainIdx)
             {
                 LOG(ERROR) << "the idx of the LineFeature 2d is wrong " << endl;
+            }
+
+            auto it = pMapLine->mmpLineFeature2D.find(mpcurrentFrame->GetFrameID());
+            if (it != pMapLine->mmpLineFeature2D.end())
+            {
+                LOG(ERROR) << "the point feature2d exist " << endl;
             }
 
             pMapLine->mmpLineFeature2D[mpcurrentFrame->GetFrameID()] = pcurLineFeature;

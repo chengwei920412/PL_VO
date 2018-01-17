@@ -85,6 +85,25 @@ public:
                              const Eigen::Vector3d &lineCoef_) : fx(fx_), fy(fy_), cx(cx_), cy(cy_),
                              Startpixel(Startpixel_), Endpixel(Endpixel_), lineCoef(lineCoef_){}
 
+    ReprojectionLineErrorSE3(double fx_, double fy_, double cx_, double cy_,
+                             const Eigen::Vector2d &Startpixel_, const Eigen::Vector2d &Endpixel_)
+                             : fx(fx_), fy(fy_), cx(cx_), cy(cy_),
+                             Startpixel(Startpixel_), Endpixel(Endpixel_)
+    {
+        Eigen::Vector3d startPointH;
+        Eigen::Vector3d endPointH;
+
+        startPointH[0] = Startpixel[0];
+        startPointH[1] = Startpixel[1];
+        startPointH[2] = 1;
+        endPointH[0] = Endpixel[0];
+        endPointH[1] = Endpixel[1];
+        endPointH[2] = 1;
+        lineCoef = startPointH.cross(endPointH);
+        // TODO it need to think over
+        lineCoef = lineCoef/sqrt(lineCoef[0]*lineCoef[0] + lineCoef[1]*lineCoef[1]);
+    }
+
     virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const;
 
 };
@@ -92,13 +111,18 @@ public:
 class Optimizer
 {
 public:
-    static void PoseOptimization(Frame *pFrame);
 
     static Eigen::Vector2d ReprojectionError(const ceres::Problem& problem, ceres::ResidualBlockId id);
 
     static std::vector<double> GetReprojectionErrorNorms(const ceres::Problem& problem);
 
     static void RemoveOutliers(ceres::Problem& problem, double threshold);
+
+    static void PoseOptimization(Frame *pFrame);
+
+    static void PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc, vector<cv::Point3d> &vPoint3d,
+                                      const vector<cv::Point2d> &vPoint2d, vector<LineFeature2D*> &vpLineFeature2D,
+                                      const vector<cv::Point2d> &vLineStart2d, const vector<cv::Point2d> &vLineEnd2d);
 }; // class Optimizer
 
 } //namespace PL_VO

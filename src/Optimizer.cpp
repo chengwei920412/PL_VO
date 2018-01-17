@@ -99,6 +99,12 @@ bool ReprojectionLineErrorSE3::Evaluate(double const *const *parameters, double 
     Eigen::Vector2d err;
 
     // the MapLine in the camera coordinate
+//    cout << parameters[1][0] << " " << parameters[1][1] << " " << parameters[1][2] << endl;
+//    cout << parameters[2][0] << " " << parameters[2][1] << " " << parameters[2][2] << endl;
+//
+//    cout << "startpoint3d: " << endl << Startpoint3d << endl;
+//    cout << "endpoint3d: " << endl << Endpoint3d << endl;
+
     Startpoint3dC = quaterd*Startpoint3d + trans;
     Endpoint3dC = quaterd*Endpoint3d + trans;
 
@@ -222,6 +228,7 @@ void Optimizer::RemoveOutliers(ceres::Problem& problem, double threshold)
         }
     }
 
+    LOG_IF(WARNING, (count/ids.size()) > 0.25) << " outliers is not a few: " << (count/ids.size()) ;
     LOG_IF(ERROR, (count/ids.size()) > 0.5) << " too much outliers: " << (count/ids.size()) << endl;
 }
 
@@ -259,8 +266,7 @@ void Optimizer::PoseOptimization(Frame *pFrame)
 
         Eigen::Vector2d observed = pFrame->mvpMapPoint[i]->mmpPointFeature2D[frameID]->mpixel;
 
-        ceres::CostFunction *costfunction = new ReprojectionErrorSE3(K(0, 0), K(1, 1),
-                                                                     K(0, 2), K(1, 2),
+        ceres::CostFunction *costfunction = new ReprojectionErrorSE3(K(0, 0), K(1, 1), K(0, 2), K(1, 2),
                                                                      observed[0], observed[1]);
 
         problem.AddResidualBlock(
@@ -362,6 +368,108 @@ void Optimizer::PoseOptimization(Frame *pFrame)
 //    {
 //        cout << residual << endl;
 //    }
+
 } // void Optimizer::PoseOptimization(Frame *pFrame)
+
+
+void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc, vector<cv::Point3d> &vPoint3d,
+                                      const vector<cv::Point2d> &vPoint2d, vector<LineFeature2D*> &vpLineFeature2D,
+                                      const vector<cv::Point2d> &vLineStart2d, const vector<cv::Point2d> &vLineEnd2d)
+{
+    Eigen::Matrix3d K;
+    K = pFrame->mpCamera->GetCameraIntrinsic();
+
+    cv::Mat extrinsic(7, 1, CV_64FC1);
+
+    {
+        extrinsic.ptr<double>()[0] = PoseInc.unit_quaternion().x();
+        extrinsic.ptr<double>()[1] = PoseInc.unit_quaternion().y();
+        extrinsic.ptr<double>()[2] = PoseInc.unit_quaternion().z();
+        extrinsic.ptr<double>()[3] = PoseInc.unit_quaternion().w();
+        extrinsic.ptr<double>()[4] = PoseInc.translation()[0];
+        extrinsic.ptr<double>()[5] = PoseInc.translation()[1];
+        extrinsic.ptr<double>()[6] = PoseInc.translation()[2];
+    }
+
+    ceres::Problem problem;
+
+    problem.AddParameterBlock(extrinsic.ptr<double>(), 7, new PoseLocalParameterization());
+
+    ceres::LossFunction* lossfunction = new ceres::CauchyLoss(1);   // loss function make bundle adjustment robuster. HuberLoss
+
+    // add the MapPoint parameterblocks and residuals
+    for (int i = 0; i < vPoint3d.size(); i++)
+    {
+        ceres::CostFunction *costfunction = new ReprojectionErrorSE3(K(0, 0), K(1, 1), K(0, 2), K(1, 2),
+                                                                     vPoint2d[i].x, vPoint2d[i].y);
+
+        problem.AddResidualBlock( costfunction, lossfunction, extrinsic.ptr<double>(), &vPoint3d[i].x);
+
+        problem.AddParameterBlock(&vPoint3d[i].x, 3);
+    }
+
+    // add the MapLine parameterblocks and residuals
+    for (size_t i = 0; i < vpLineFeature2D.size(); i++)
+    {
+
+        ceres::CostFunction *costFunction = new ReprojectionLineErrorSE3(K(0, 0), K(1, 1), K(0, 2), K(1, 2),
+                                                                         Converter::toVector2d(vLineStart2d[i]),
+                                                                         Converter::toVector2d(vLineEnd2d[i]));
+
+        problem.AddResidualBlock(costFunction, lossfunction, extrinsic.ptr<double>(),
+                                 &vpLineFeature2D[i]->mStartPoint3dw.x(),
+                                 &vpLineFeature2D[i]->mEndPoint3dw.x());
+
+        problem.AddParameterBlock(&vpLineFeature2D[i]->mStartPoint3dw.x(), 3);
+        problem.AddParameterBlock(&vpLineFeature2D[i]->mEndPoint3dw.x(), 3);
+    }
+
+//    vector<double> vresiduals;
+//    vresiduals = GetReprojectionErrorNorms(problem);
+//
+//    for (auto residual : vresiduals)
+//    {
+//        cout << residual << endl;
+//    }
+
+    RemoveOutliers(problem, 25);
+
+    ceres::Solver::Options options;
+    options.num_threads = 4;
+//    options.max_num_iterations = 5;
+    options.linear_solver_type = ceres::DENSE_SCHUR;
+    options.minimizer_progress_to_stdout = true;
+    options.max_solver_time_in_seconds = 0.1;
+
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+
+    {
+        // it is very important that the scale data is the first position in the quaternion data type in the eigen
+        // but if you use pointer to use the data, the scale date is the last position.
+        PoseInc.setQuaternion(Eigen::Quaterniond(extrinsic.ptr<double>()[3], extrinsic.ptr<double>()[0],
+                                                     extrinsic.ptr<double>()[1],extrinsic.ptr<double>()[2]));
+
+        PoseInc.so3().unit_quaternion().norm();
+        PoseInc.translation()[0] = extrinsic.ptr<double>()[4];
+        PoseInc.translation()[1] = extrinsic.ptr<double>()[5];
+        PoseInc.translation()[2] = extrinsic.ptr<double>()[6];
+    }
+
+    if (!summary.IsSolutionUsable())
+    {
+        cout << "Bundle Adjustment failed." << endl;
+    }
+    else
+    {
+        // Display statistics about the minimization
+        cout << summary.BriefReport() << endl
+             << " residuals number: " << summary.num_residuals << endl
+             << " Initial RMSE: " << sqrt(summary.initial_cost / summary.num_residuals) << endl
+             << " Final RMSE: " << sqrt(summary.final_cost / summary.num_residuals) << endl
+             << " Time (s): " << summary.total_time_in_seconds << endl;
+    }
+
+} // Sophus::SE3 Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 PoseInc)
 
 } // namespace PL_VO

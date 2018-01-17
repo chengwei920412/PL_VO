@@ -35,6 +35,8 @@ public:
 
     Frame(const Frame &frame);
 
+    ~Frame();
+
     size_t GetFrameID();
 
     const size_t GetFrameID() const;

@@ -8,6 +8,7 @@
 #include <string>
 #include <opencv2/opencv.hpp>
 #include <eigen3/Eigen/Dense>
+#include "glog/logging.h"
 #include "Converter.h"
 
 namespace PL_VO

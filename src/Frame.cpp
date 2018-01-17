@@ -18,6 +18,10 @@ Frame::Frame(const double &timeStamp, Camera *pCamera, LineFeature *pLineFeature
     mtimeStamp = timeStamp;
     mImageHeight = pCamera->mImageHeight;
     mImageWidth = pCamera->mImageWidth;
+
+    Tcw.so3().setQuaternion(Eigen::Quaterniond::Identity());
+    Tcw.translation() = Eigen::Vector3d(0, 0, 0);
+    Twc = Tcw.inverse();
 }
 
 Frame::Frame(const Frame &frame)
@@ -44,6 +48,41 @@ Frame::Frame(const Frame &frame)
     mvpLineFeature2D.assign(frame.mvpLineFeature2D.begin(), frame.mvpLineFeature2D.end());
     mvpMapPoint.assign(frame.mvpMapPoint.begin(), frame.mvpMapPoint.end());
     mvpMapLine.assign(frame.mvpMapLine.begin(), frame.mvpMapLine.end());
+}
+
+Frame::~Frame()
+{
+    for (auto it = mvpPointFeature2D.begin(); it != mvpPointFeature2D.end(); it ++)
+        if (NULL != *it)
+        {
+            delete *it;
+            *it = NULL;
+        }
+    mvpPointFeature2D.clear();
+
+    for (auto it = mvpLineFeature2D.begin(); it != mvpLineFeature2D.end(); it ++)
+        if (NULL != *it)
+        {
+            delete *it;
+            *it = NULL;
+        }
+    mvpLineFeature2D.clear();
+
+    for (auto it = mvpMapPoint.begin(); it != mvpMapPoint.end(); it ++)
+        if (NULL != *it)
+        {
+            delete *it;
+            *it = NULL;
+        }
+    mvpMapPoint.clear();
+
+    for (auto it = mvpMapLine.begin(); it != mvpMapLine.end(); it ++)
+        if (NULL != *it)
+        {
+            delete *it;
+            *it = NULL;
+        }
+    mvpMapLine.clear();
 }
 
 size_t Frame::GetFrameID()
@@ -387,7 +426,6 @@ void Frame::UnprojectPointStereo(const cv::Mat &imageDepth, const vector<cv::DMa
             mvpPointFeature2D[idxMatch] = ppointFeature;
         }
     } // for (auto match : vpointMatches)
-
 }
 
 void Frame::UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMatch> &vlineMatches, const bool &bcurframe)

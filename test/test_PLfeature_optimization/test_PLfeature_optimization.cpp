@@ -87,8 +87,6 @@ int main(int argc, char* argv[])
 //        cv::imshow(" image line show ", imagelineshow);
     }
 
-
-
     {
         vector<cv::Point3d> vpts3d;
         vector<cv::Point2d> vpts2d;
