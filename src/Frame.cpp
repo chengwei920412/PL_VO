@@ -409,6 +409,8 @@ void Frame::UnprojectPointStereo(const cv::Mat &imageDepth, const vector<cv::DMa
             Eigen::Vector3d Point3dw;
             double d = FindDepth(mvKeyPoint[idxMatch].pt, imageDepth);
 
+            PointFeature2D *ppointFeature = new PointFeature2D(Converter::toVector2d(kp.pt), kp.octave, kp.response, idxMatch);
+
             if (d > 0)
             {
                 Point3dw = mpCamera->Pixwl2World(Converter::toVector2d(kp.pt), Tcw.so3().unit_quaternion(), Tcw.translation(), d);
@@ -416,10 +418,10 @@ void Frame::UnprojectPointStereo(const cv::Mat &imageDepth, const vector<cv::DMa
             else
             {
                 Point3dw.setZero();
+                ppointFeature->mbinlier = false;
             }
 
             // the pointfeature2d's ID is setted by the match
-            PointFeature2D *ppointFeature = new PointFeature2D(Converter::toVector2d(kp.pt), kp.octave, kp.response, idxMatch);
 
             ppointFeature->mPoint3dw = Point3dw;
 
@@ -470,6 +472,9 @@ void Frame::UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMat
             Eigen::Vector3d startPoint3dw;
             Eigen::Vector3d endPoint3dw;
 
+            LineFeature2D *plineFeature2D = new LineFeature2D(Converter::toVector2d(startPointUn2f), Converter::toVector2d(endPointUn2f),
+                                                              kl.octave, kl.response, idxMatch);
+
             if (d1 > 0)
             {
                 startPoint3dw = mpCamera->Pixwl2World(Converter::toVector2d(startPointUn2f), Tcw.so3().unit_quaternion(),
@@ -478,6 +483,7 @@ void Frame::UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMat
             else
             {
                 startPoint3dw.setZero(); // to set the pose zero and use the other observation to calculate the pose
+                plineFeature2D->mbinlier = false;
             }
 
             if (d2 > 0)
@@ -488,10 +494,8 @@ void Frame::UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMat
             else
             {
                 endPoint3dw.setZero();
+                plineFeature2D->mbinlier = false;
             }
-
-            LineFeature2D *plineFeature2D = new LineFeature2D(Converter::toVector2d(startPointUn2f), Converter::toVector2d(endPointUn2f),
-                                                              kl.octave, kl.response, idxMatch);
 
             plineFeature2D->mStartPoint3dw = startPoint3dw;
             plineFeature2D->mEndPoint3dw = endPoint3dw;

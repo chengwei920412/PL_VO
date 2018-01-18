@@ -198,20 +198,56 @@ Eigen::Vector2d Optimizer::ReprojectionError(const ceres::Problem& problem, cere
     return residual;
 }
 
-std::vector<double> Optimizer::GetReprojectionErrorNorms(const ceres::Problem& problem)
+vector<double> Optimizer::GetReprojectionErrorNorms(const ceres::Problem& problem)
 {
     std::vector<double> result;
     std::vector<ceres::ResidualBlockId> ids;
 
     problem.GetResidualBlocks(&ids);
 
-    for (auto& id : ids)
+    for (auto &id : ids)
     {
         result.push_back(ReprojectionError(problem, id).norm());
     }
 
     return result;
 }
+
+void Optimizer::GetPLReprojectionErrorNorms(const ceres::Problem &problem, const double *pPointParameter,
+                                            const double *pLineParameter, vector<double> &vPointResidues,
+                                            vector<double> &vLineResidues)
+{
+    std::vector<ceres::ResidualBlockId> vidsPoint;
+    std::vector<ceres::ResidualBlockId> vidsLine;
+    std::vector<ceres::ResidualBlockId> vidsPL;
+
+    problem.GetResidualBlocks(&vidsPL);
+
+    problem.GetResidualBlocksForParameterBlock(pPointParameter, &vidsPoint);
+    problem.GetResidualBlocksForParameterBlock(pLineParameter, &vidsLine);
+
+    auto it = find(vidsPL.begin(), vidsPL.end(), vidsLine[0]);
+    if (it == vidsPL.end())
+        LOG_IF(ERROR, "the Line id can not find");
+
+    long lineStartPosition = distance(vidsPL.begin(), it);
+
+    vidsPoint.resize(size_t(lineStartPosition-1));
+    vidsLine.resize(vidsPL.size()-lineStartPosition);
+    vidsPoint.assign(vidsPL.begin(), vidsPL.begin()+lineStartPosition);
+    vidsLine.assign(vidsPL.begin()+lineStartPosition, vidsPL.end());
+
+    for (auto &id : vidsPoint)
+    {
+        vPointResidues.push_back(ReprojectionError(problem, id).norm());
+    }
+
+    for (auto &id : vidsLine)
+    {
+        vLineResidues.push_back(ReprojectionError(problem, id).norm());
+    }
+}
+
 
 void Optimizer::RemoveOutliers(ceres::Problem& problem, double threshold)
 {
@@ -230,6 +266,29 @@ void Optimizer::RemoveOutliers(ceres::Problem& problem, double threshold)
 
     LOG_IF(WARNING, (count/ids.size()) > 0.25) << " outliers is not a few: " << (count/ids.size()) ;
     LOG_IF(ERROR, (count/ids.size()) > 0.5) << " too much outliers: " << (count/ids.size()) << endl;
+}
+
+double Optimizer::VectorStdvMad(vector<double> vresidues_)
+{
+    if (vresidues_.empty())
+        return 0.0;
+
+    size_t num = vresidues_.size();
+
+    vector<double> vresidues;
+    vresidues.assign(vresidues_.begin(), vresidues_.end());
+
+    sort(vresidues.begin(), vresidues.end());
+
+    double median = vresidues[num/2];
+    for (auto residual : vresidues)
+        residual = fabs(residual - median);
+
+    sort(vresidues.begin(), vresidues.end());
+
+    double MAD = 1.4826*vresidues[num/2];
+
+    return MAD;
 }
 
 void Optimizer::PoseOptimization(Frame *pFrame)
@@ -420,23 +479,15 @@ void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc, vecto
                                  &vpLineFeature2D[i]->mStartPoint3dw.x(),
                                  &vpLineFeature2D[i]->mEndPoint3dw.x());
 
-        problem.AddParameterBlock(&vpLineFeature2D[i]->mStartPoint3dw.x(), 3);
-        problem.AddParameterBlock(&vpLineFeature2D[i]->mEndPoint3dw.x(), 3);
+        problem.SetParameterBlockConstant(&vpLineFeature2D[i]->mStartPoint3dw.x());
+        problem.SetParameterBlockConstant(&vpLineFeature2D[i]->mEndPoint3dw.x());
     }
 
-//    vector<double> vresiduals;
-//    vresiduals = GetReprojectionErrorNorms(problem);
-//
-//    for (auto residual : vresiduals)
-//    {
-//        cout << residual << endl;
-//    }
-
-    RemoveOutliers(problem, 25);
+//    RemoveOutliers(problem, 25);
 
     ceres::Solver::Options options;
     options.num_threads = 4;
-//    options.max_num_iterations = 5;
+    options.max_num_iterations = Config::maxIters();
     options.linear_solver_type = ceres::DENSE_SCHUR;
     options.minimizer_progress_to_stdout = true;
     options.max_solver_time_in_seconds = 0.1;
@@ -448,7 +499,7 @@ void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc, vecto
         // it is very important that the scale data is the first position in the quaternion data type in the eigen
         // but if you use pointer to use the data, the scale date is the last position.
         PoseInc.setQuaternion(Eigen::Quaterniond(extrinsic.ptr<double>()[3], extrinsic.ptr<double>()[0],
-                                                     extrinsic.ptr<double>()[1],extrinsic.ptr<double>()[2]));
+                                                 extrinsic.ptr<double>()[1],extrinsic.ptr<double>()[2]));
 
         PoseInc.so3().unit_quaternion().norm();
         PoseInc.translation()[0] = extrinsic.ptr<double>()[4];
@@ -469,6 +520,32 @@ void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc, vecto
              << " Final RMSE: " << sqrt(summary.final_cost / summary.num_residuals) << endl
              << " Time (s): " << summary.total_time_in_seconds << endl;
     }
+
+    vector<double> vPointResiduals, vLineResiduals;
+    GetPLReprojectionErrorNorms(problem, &vPoint3d[0].x, &vpLineFeature2D[0]->mStartPoint3dw.x(),
+                                vPointResiduals, vLineResiduals);
+
+    double pointInlierth = Config::inlierK()*VectorStdvMad(vPointResiduals);
+    double lineInlierth = Config::inlierK()*VectorStdvMad(vLineResiduals);
+
+    for (auto pointResidual : vPointResiduals)
+    {
+        if (pointResidual > pointInlierth)
+            pFrame->mvPnPPointOutliers.push_back(true);
+        else
+            pFrame->mvPnPPointOutliers.push_back(false);
+    }
+
+    for (auto lineResidual : vLineResiduals)
+    {
+        if (lineResidual > lineInlierth)
+            pFrame->mvPnPLineOutliers.push_back(true);
+        else
+            pFrame->mvPnPLineOutliers.push_back(false);
+    }
+
+    CHECK(pFrame->mvPnPPointOutliers.size() == vPoint3d.size());
+    CHECK(pFrame->mvPnPLineOutliers.size() == vpLineFeature2D.size());
 
 } // Sophus::SE3 Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 PoseInc)
 

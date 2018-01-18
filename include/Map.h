@@ -37,7 +37,7 @@ struct PointFeature2D
     int mlevel = -1;
     double mangle = 0;
     cv::Mat desc = cv::Mat(1, 32, CV_8UC1);
-    bool mbbad = false;
+    bool mbinlier = false;
     double mscore = 0;
 
 }; // struct PointFeature2D
@@ -76,7 +76,7 @@ struct LineFeature2D
     int mlevel = -1;
     double mangle = 0;
     cv::Mat desc = cv::Mat(1, 32, CV_8UC1);
-    bool mbbad = false;
+    bool mbinlier = false;
     double mscore = 0;
 
 }; // struct LineFeature2D

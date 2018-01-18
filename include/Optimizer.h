@@ -114,9 +114,15 @@ public:
 
     static Eigen::Vector2d ReprojectionError(const ceres::Problem& problem, ceres::ResidualBlockId id);
 
-    static std::vector<double> GetReprojectionErrorNorms(const ceres::Problem& problem);
+    static vector<double> GetReprojectionErrorNorms(const ceres::Problem &problem);
+
+    static void GetPLReprojectionErrorNorms(const ceres::Problem &problem,
+                                            const double *pPointParameter, const double *pLineParameter,
+                                            vector<double> &vPointResidues, vector<double> &vLineResidues);
 
     static void RemoveOutliers(ceres::Problem& problem, double threshold);
+
+    static double VectorStdvMad(vector<double> vresidues_);
 
     static void PoseOptimization(Frame *pFrame);
 

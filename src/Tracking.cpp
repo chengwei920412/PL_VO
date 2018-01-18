@@ -118,7 +118,7 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
     mlastimageDepth = mimageDepth.clone();
 }
 
-bool Tracking::TrackRefFrame(vector<cv::DMatch> &vpointMatches, vector<cv::DMatch> &vlineMatches)
+bool Tracking::TrackRefFrame(const vector<cv::DMatch> &vpointMatches, const vector<cv::DMatch> &vlineMatches)
 {
     Sophus::SE3 PoseInc;
 

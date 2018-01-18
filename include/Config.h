@@ -52,6 +52,11 @@ public:
     static double&  minRatio12L()        { return getInstance().min_ratio_12_l; }
     static double&  lineCovTh()          { return getInstance().line_cov_th; }
 
+    // optimization
+    static int&     minFeatures()        { return getInstance().min_features; }
+    static int&     maxIters()           { return getInstance().max_iters; }
+    static double&  inlierK()            { return getInstance().inlier_k; }
+
 private:
 
     bool image_RGBForm;
@@ -89,6 +94,11 @@ private:
     double desc_th_l;
     double min_ratio_12_l;
     double line_cov_th;
+
+    // optimization
+    int    min_features;
+    int    max_iters;
+    double inlier_k;
 
 
 }; // class Config

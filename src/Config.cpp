@@ -43,6 +43,12 @@ Config::Config()
     line_horiz_th     = 0.1;         // parameter to avoid horizontal lines
     desc_th_l         = 0.1;         // parameter to avoid outliers in line matching
     line_cov_th       = 10.0;        // parameter to remove noisy line segments
+
+    // Optimization parameters
+    // -----------------------------------------------------------------------------------------------------
+    min_features     = 10;          // min. number of features to perform StVO
+    max_iters        = 5;           // max. number of iterations in the first stage of the optimization
+    inlier_k         = 2.0;         // factor to discard outliers before the refinement stage
 }
 
 Config& Config::getInstance()

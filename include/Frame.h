@@ -76,6 +76,8 @@ public:
 
     cv::Mat mpointDesc;
     cv::Mat mlineDesc;
+    vector<bool> mvPnPPointOutliers;
+    vector<bool> mvPnPLineOutliers;
     vector<cv::KeyPoint> mvKeyPoint;
     vector<cv::line_descriptor::KeyLine> mvKeyLine;
     vector<cv::KeyPoint> mvKeyPointUn;
