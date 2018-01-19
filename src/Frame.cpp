@@ -393,13 +393,9 @@ void Frame::UnprojectPointStereo(const cv::Mat &imageDepth, const vector<cv::DMa
         cv::KeyPoint kp;
 
         if (bcurframe)
-        {
             idxMatch = match.trainIdx;
-        }
         else
-        {
             idxMatch = match.queryIdx;
-        }
 
         if (mvpPointFeature2D[idxMatch] == nullptr)
         {
@@ -413,7 +409,7 @@ void Frame::UnprojectPointStereo(const cv::Mat &imageDepth, const vector<cv::DMa
 
             if (d > 0)
             {
-                Point3dw = mpCamera->Pixwl2World(Converter::toVector2d(kp.pt), Tcw.so3().unit_quaternion(), Tcw.translation(), d);
+                Point3dw = mpCamera->Pixwl2World(Converter::toVector2d(kp.pt), Eigen::Quaterniond::Identity(), Eigen::Vector3d(0, 0, 0), d);
             }
             else
             {
@@ -441,13 +437,9 @@ void Frame::UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMat
         cv::line_descriptor::KeyLine kl;
 
         if (bcurframe)
-        {
             idxMatch = match.trainIdx; // the current frame
-        }
         else
-        {
             idxMatch = match.queryIdx; // the last frame
-        }
 
         if (mvpLineFeature2D[idxMatch] == nullptr)
         {
@@ -477,8 +469,8 @@ void Frame::UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMat
 
             if (d1 > 0)
             {
-                startPoint3dw = mpCamera->Pixwl2World(Converter::toVector2d(startPointUn2f), Tcw.so3().unit_quaternion(),
-                                                      Tcw.translation(), d1);
+                startPoint3dw = mpCamera->Pixwl2World(Converter::toVector2d(startPointUn2f), Eigen::Quaterniond::Identity(),
+                                                      Eigen::Vector3d(0, 0, 0), d1);
             }
             else
             {
@@ -488,8 +480,8 @@ void Frame::UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMat
 
             if (d2 > 0)
             {
-                endPoint3dw = mpCamera->Pixwl2World(Converter::toVector2d(endPointUn2f), Tcw.so3().unit_quaternion(),
-                                                    Tcw.translation(), d2);
+                endPoint3dw = mpCamera->Pixwl2World(Converter::toVector2d(endPointUn2f), Eigen::Quaterniond::Identity(),
+                                                    Eigen::Vector3d(0, 0, 0), d2);
             }
             else
             {

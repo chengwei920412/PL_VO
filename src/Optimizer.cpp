@@ -431,9 +431,11 @@ void Optimizer::PoseOptimization(Frame *pFrame)
 } // void Optimizer::PoseOptimization(Frame *pFrame)
 
 
-void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc, vector<cv::Point3d> &vPoint3d,
-                                      const vector<cv::Point2d> &vPoint2d, vector<LineFeature2D*> &vpLineFeature2D,
-                                      const vector<cv::Point2d> &vLineStart2d, const vector<cv::Point2d> &vLineEnd2d)
+void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc,
+                                      vector<PointFeature2D *> &vpPointFeature2DLast,
+                                      vector<PointFeature2D *> &vpPointFeature2DCur,
+                                      vector<LineFeature2D *> &vpLineFeature2DLast,
+                                      vector<LineFeature2D *> &vpLineFeature2DCur)
 {
     Eigen::Matrix3d K;
     K = pFrame->mpCamera->GetCameraIntrinsic();
@@ -456,34 +458,49 @@ void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc, vecto
 
     ceres::LossFunction* lossfunction = new ceres::CauchyLoss(1);   // loss function make bundle adjustment robuster. HuberLoss
 
+    CHECK(vpPointFeature2DLast.size() == vpPointFeature2DCur.size());
+    CHECK(vpLineFeature2DLast.size() == vpLineFeature2DCur.size());
+
     // add the MapPoint parameterblocks and residuals
-    for (int i = 0; i < vPoint3d.size(); i++)
+    for (int i = 0; i < vpPointFeature2DLast.size(); i++)
     {
+        if (!vpPointFeature2DLast[i]->mbinlier)
+            continue;
+
         ceres::CostFunction *costfunction = new ReprojectionErrorSE3(K(0, 0), K(1, 1), K(0, 2), K(1, 2),
-                                                                     vPoint2d[i].x, vPoint2d[i].y);
+                                                                     vpPointFeature2DCur[i]->mpixel[0], vpPointFeature2DCur[i]->mpixel[1]);
 
-        problem.AddResidualBlock( costfunction, lossfunction, extrinsic.ptr<double>(), &vPoint3d[i].x);
+        problem.AddResidualBlock( costfunction, lossfunction, extrinsic.ptr<double>(), &vpPointFeature2DLast[i]->mPoint3dw.x());
 
-        problem.AddParameterBlock(&vPoint3d[i].x, 3);
+        problem.AddParameterBlock(&vpPointFeature2DLast[i]->mPoint3dw.x(), 3);
     }
 
     // add the MapLine parameterblocks and residuals
-    for (size_t i = 0; i < vpLineFeature2D.size(); i++)
+    for (size_t i = 0; i < vpLineFeature2DLast.size(); i++)
     {
+        if (!vpLineFeature2DLast[i]->mbinlier)
+            continue;
 
         ceres::CostFunction *costFunction = new ReprojectionLineErrorSE3(K(0, 0), K(1, 1), K(0, 2), K(1, 2),
-                                                                         Converter::toVector2d(vLineStart2d[i]),
-                                                                         Converter::toVector2d(vLineEnd2d[i]));
+                                                                         vpLineFeature2DCur[i]->mStartpixel,
+                                                                         vpLineFeature2DCur[i]->mEndpixel);
 
         problem.AddResidualBlock(costFunction, lossfunction, extrinsic.ptr<double>(),
-                                 &vpLineFeature2D[i]->mStartPoint3dw.x(),
-                                 &vpLineFeature2D[i]->mEndPoint3dw.x());
+                                 &vpLineFeature2DLast[i]->mStartPoint3dw.x(),
+                                 &vpLineFeature2DLast[i]->mEndPoint3dw.x());
 
-        problem.SetParameterBlockConstant(&vpLineFeature2D[i]->mStartPoint3dw.x());
-        problem.SetParameterBlockConstant(&vpLineFeature2D[i]->mEndPoint3dw.x());
+        problem.SetParameterBlockConstant(&vpLineFeature2DLast[i]->mStartPoint3dw.x());
+        problem.SetParameterBlockConstant(&vpLineFeature2DLast[i]->mEndPoint3dw.x());
     }
 
 //    RemoveOutliers(problem, 25);
+    vector<double> vresiduals;
+    vresiduals = GetReprojectionErrorNorms(problem);
+
+    for (auto residual : vresiduals)
+    {
+        cout << residual << endl;
+    }
 
     ceres::Solver::Options options;
     options.num_threads = 4;
@@ -507,6 +524,8 @@ void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc, vecto
         PoseInc.translation()[2] = extrinsic.ptr<double>()[6];
     }
 
+    cout << "PoseInc: " << endl << PoseInc << endl;
+
     if (!summary.IsSolutionUsable())
     {
         cout << "Bundle Adjustment failed." << endl;
@@ -521,31 +540,41 @@ void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc, vecto
              << " Time (s): " << summary.total_time_in_seconds << endl;
     }
 
+    vresiduals = GetReprojectionErrorNorms(problem);
+
+    for (auto residual : vresiduals)
+    {
+        cout << residual << endl;
+    }
+
     vector<double> vPointResiduals, vLineResiduals;
-    GetPLReprojectionErrorNorms(problem, &vPoint3d[0].x, &vpLineFeature2D[0]->mStartPoint3dw.x(),
+    GetPLReprojectionErrorNorms(problem, &vpPointFeature2DLast[0]->mPoint3dw.x(), &vpLineFeature2DLast[0]->mStartPoint3dw.x(),
                                 vPointResiduals, vLineResiduals);
 
     double pointInlierth = Config::inlierK()*VectorStdvMad(vPointResiduals);
     double lineInlierth = Config::inlierK()*VectorStdvMad(vLineResiduals);
 
-    for (auto pointResidual : vPointResiduals)
-    {
-        if (pointResidual > pointInlierth)
-            pFrame->mvPnPPointOutliers.push_back(true);
-        else
-            pFrame->mvPnPPointOutliers.push_back(false);
-    }
+    cout << "pointInlierth: " << pointInlierth << endl;
+    cout << "lineInlierth: " << lineInlierth << endl;
 
-    for (auto lineResidual : vLineResiduals)
-    {
-        if (lineResidual > lineInlierth)
-            pFrame->mvPnPLineOutliers.push_back(true);
-        else
-            pFrame->mvPnPLineOutliers.push_back(false);
-    }
+//    for (auto pointResidual : vPointResiduals)
+//    {
+//        if (pointResidual > pointInlierth)
+//            pFrame->mvPnPPointOutliers.push_back(true);
+//        else
+//            pFrame->mvPnPPointOutliers.push_back(false);
+//    }
+//
+//    for (auto lineResidual : vLineResiduals)
+//    {
+//        if (lineResidual > lineInlierth)
+//            pFrame->mvPnPLineOutliers.push_back(true);
+//        else
+//            pFrame->mvPnPLineOutliers.push_back(false);
+//    }
 
-    CHECK(pFrame->mvPnPPointOutliers.size() == vPoint3d.size());
-    CHECK(pFrame->mvPnPLineOutliers.size() == vpLineFeature2D.size());
+//    CHECK(pFrame->mvPnPPointOutliers.size() == vPoint3d.size());
+//    CHECK(pFrame->mvPnPLineOutliers.size() == vpLineFeature2D.size());
 
 } // Sophus::SE3 Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 PoseInc)
 

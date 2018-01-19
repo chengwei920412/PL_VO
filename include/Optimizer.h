@@ -126,9 +126,11 @@ public:
 
     static void PoseOptimization(Frame *pFrame);
 
-    static void PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc, vector<cv::Point3d> &vPoint3d,
-                                      const vector<cv::Point2d> &vPoint2d, vector<LineFeature2D*> &vpLineFeature2D,
-                                      const vector<cv::Point2d> &vLineStart2d, const vector<cv::Point2d> &vLineEnd2d);
+    static void PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc,
+                                      vector<PointFeature2D *> &vpPointFeature2DLast,
+                                      vector<PointFeature2D *> &vpPointFeature2DCur,
+                                      vector<LineFeature2D *> &vpLineFeature2DLast,
+                                      vector<LineFeature2D *> &vpLineFeature2DCur);
 }; // class Optimizer
 
 } //namespace PL_VO
