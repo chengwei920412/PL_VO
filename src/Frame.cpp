@@ -520,50 +520,53 @@ void Frame::MapLinePointShow()
 {
     cout << "the frame MapPoint debug show: " << "frame ID: " << GetFrameID() << " frame timestamp: " << to_string(mtimeStamp) << endl;
 
-    bool bMapPointShow = false;
-    bool bMapLineShow = false;
+    bool bMapPointShow = true;
+    bool bMapLineShow = true;
 
-    if (bMapPointShow == true)
+    if (bMapPointShow)
     {
         cout << "the MapPoint show " << endl;
 
         for (auto pMapPoint : mvpMapPoint)
         {
-            cout << "ID: " << pMapPoint->mID << ", ";
-            cout << "3D: " << pMapPoint->mPosew[0] << " " << pMapPoint->mPosew[1] << " " << pMapPoint->mPosew[2] << " | ";
+//            cout << "ID: " << pMapPoint->mID << ", ";
+//            cout << "3D: " << pMapPoint->mPosew[0] << " " << pMapPoint->mPosew[1] << " " << pMapPoint->mPosew[2] << " | ";
+//
+//            map<size_t, PointFeature2D*>::iterator it;
+//            it = pMapPoint->mmpPointFeature2D.begin();
+//
+//            while(it != pMapPoint->mmpPointFeature2D.end())
+//            {
+//                cout << it->second->mpixel[0] << " " << it->second->mpixel[1] << " | ";
+//                it++;
+//            }
+//            cout << endl;
 
-            map<size_t, PointFeature2D*>::iterator it;
-            it = pMapPoint->mmpPointFeature2D.begin();
-
-            while(it != pMapPoint->mmpPointFeature2D.end())
-            {
-                cout << it->second->mpixel[0] << " " << it->second->mpixel[1] << " | ";
-                it++;
-            }
-            cout << endl;
+            cout << pMapPoint->GetObservedInliersNum() << " / " << pMapPoint->GetObservedNum() << endl;
 
         }
     }
 
-    if (bMapLineShow == true)
+    if (bMapLineShow)
     {
         cout << endl << "the MapLine show " << endl;
 
         for (auto pMapLine : mvpMapLine)
         {
-            cout << "ID: " << pMapLine->mID << " ";
-            cout << "3D: " << pMapLine->mPoseStartw[0] << " " << pMapLine->mPoseStartw[1] << " " << pMapLine->mPoseStartw[2] << ", "
-                 << pMapLine->mPoseEndw[0] << " " << pMapLine->mPoseEndw[1] << " " << pMapLine->mPoseEndw[2] << " | ";
-            map<size_t, LineFeature2D*>::iterator it;
-            it = pMapLine->mmpLineFeature2D.begin();
-
-            while(it != pMapLine->mmpLineFeature2D.end())
-            {
-                cout << it->second->mStartpixel[0] << " " << it->second->mStartpixel[1] << ", "
-                     << it->second->mEndpixel[0] << " " << it->second->mEndpixel[1] << " | ";
-                it++;
-            }
-            cout << endl;
+//            cout << "ID: " << pMapLine->mID << " ";
+//            cout << "3D: " << pMapLine->mPoseStartw[0] << " " << pMapLine->mPoseStartw[1] << " " << pMapLine->mPoseStartw[2] << ", "
+//                 << pMapLine->mPoseEndw[0] << " " << pMapLine->mPoseEndw[1] << " " << pMapLine->mPoseEndw[2] << " | ";
+//            map<size_t, LineFeature2D*>::iterator it;
+//            it = pMapLine->mmpLineFeature2D.begin();
+//
+//            while(it != pMapLine->mmpLineFeature2D.end())
+//            {
+//                cout << it->second->mStartpixel[0] << " " << it->second->mStartpixel[1] << ", "
+//                     << it->second->mEndpixel[0] << " " << it->second->mEndpixel[1] << " | ";
+//                it++;
+//            }
+//            cout << endl;
+            cout << pMapLine->GetObservedInliersNum() << " / " << pMapLine->GetObservedNum() << endl;
         }
     }
 }

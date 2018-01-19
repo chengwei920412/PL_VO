@@ -87,6 +87,18 @@ public:
 
     MapPoint();
 
+    int GetObservedNum(){ return mmpPointFeature2D.size();}
+    int GetObservedInliersNum()
+    {
+        int cnt = 0;
+        for (auto it = mmpPointFeature2D.begin(); it != mmpPointFeature2D.end(); it++)
+        {
+            if (it->second->mbinlier)
+                cnt++;
+        }
+        return cnt;
+    }
+
     size_t  mID = -1;
     Eigen::Vector3d mPosew = Eigen::Vector3d(0, 0, 0);
     cv::Mat mdesc = cv::Mat(1, 32, CV_8UC1);
@@ -101,6 +113,18 @@ class MapLine
 public:
 
     MapLine();
+
+    int GetObservedNum(){ return mmpLineFeature2D.size();}
+    int GetObservedInliersNum()
+    {
+        int cnt = 0;
+        for (auto it = mmpLineFeature2D.begin(); it != mmpLineFeature2D.end(); it++)
+        {
+            if (it->second->mbinlier)
+                cnt++;
+        }
+        return cnt;
+    }
 
     size_t mID = -1;
     Eigen::Vector3d mPoseStartw = Eigen::Vector3d(0, 0, 0);
