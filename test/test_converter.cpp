@@ -38,4 +38,14 @@ int main(int argv, char* argc[])
 
     cout << PL_VO::Converter::toEuler(so31.unit_quaternion()).transpose() << endl;
     cout << PL_VO::Converter::toEuler(so32.unit_quaternion()).transpose() << endl;
+
+
+    Sophus::SE3 Tcw(Eigen::Quaterniond(0.99942977681163814, -0.0028868419120917322, -0.016111434490270738, -0.029533185481412594),
+                    Eigen::Vector3d(-0.012884787233118483, -0.0069446675501963423, 0.028263296041360034));
+
+    Eigen::Vector3d Point(0.5257240294266079, -0.034655717506164807, 1.1037999999999999);
+
+    cout << "Tcw*Point3d: "  << endl;
+    cout << (Tcw.inverse()*Point).transpose() << endl;
+    cout << (Tcw.rotation_matrix()*Point + Tcw.translation()) << endl;
 }

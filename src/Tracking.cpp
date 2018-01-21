@@ -108,7 +108,7 @@ void Tracking::Track(const cv::Mat &imagergb, const cv::Mat &imD, const double &
                                              vlineRefineMatches, showimg,  cv::Scalar::all(-1), cv::Scalar::all(-1), mask,
                                              cv::line_descriptor::DrawLinesMatchesFlags::DEFAULT);
         cv::imshow(" ", showimg);
-        cv::waitKey(0);
+        cv::waitKey(5);
     }
 
     mpMap->mlpFrames.push_back(mpcurrentFrame);
@@ -169,24 +169,27 @@ bool Tracking::TrackRefFrame(const vector<cv::DMatch> &vpointMatches, const vect
     cv::solvePnPRansac(vPoint3d, vPoint2d, Converter::toCvMat(mpcamera->GetCameraIntrinsic()), cv::Mat(),
                        rvec, tvec, false, 100, 4.0, 0.99, vinliers);
 
+    if (vinliers.size() > 0)
     {
         int idx = 0;
-        for (size_t i = 0; i < vpPointFeature2DLast.size(); i++)
+        for (size_t i = 0; i < vpPointFeature2DCur.size(); i++)
         {
             if (i == vinliers[idx])
                 idx++;
             else
-                vpPointFeature2DLast[i]->mbinlier = false;
+                vpPointFeature2DCur[i]->mbinlier = false;
         }
     }
 
     PoseInc = Sophus::SE3(Sophus::SO3(rvec.at<double>(0,0), rvec.at<double>(1,0), rvec.at<double>(2,0)),
                           Converter::toVector3d(tvec));
 
-    cout <<  "PoseInc: " << endl << PoseInc << endl;
+    cout << "PoseInc: " << endl << PoseInc << endl;
 
     Optimizer::PnPResultOptimization(mpcurrentFrame, PoseInc, vpPointFeature2DLast, vpPointFeature2DCur,
                                      vpLineFeature2DLast, vpLineFeature2DCur);
+
+    cout << "Optimization PoseInc: " << endl << PoseInc << endl;
 
     mpcurrentFrame->Tcw = mplastFrame->Tcw*PoseInc;
 
@@ -210,10 +213,13 @@ void Tracking::UpdateMapPointfeature(const vector<cv::DMatch> &vpointMatches)
             MapPoint *pMapPoint = new MapPoint;
 
             pMapPoint->mID = countMapPoint;
-            pMapPoint->mPosew = mpcamera->Camera2World(pPointFeature->mPoint3dw, mplastFrame->Tcw.unit_quaternion(),
-                                                       mplastFrame->Tcw.translation());
+            if (!pPointFeature->mPoint3dw.isZero())
+                pMapPoint->mPosew = mplastFrame->Tcw.inverse()*pPointFeature->mPoint3dw;
             pMapPoint->mmpPointFeature2D[mplastFrame->GetFrameID()] = pPointFeature;
             pMapPoint->mlpFrameinvert.push_back(mplastFrame);
+
+//            if (!pMapPoint->mPosew.isZero())
+//                CHECK(fabs(pMapPoint->mPosew.minCoeff()) > 0.01);
 
             mplastFrame->mvpMapPoint.push_back(pMapPoint);
             pPointFeature->mpMapPoint = pMapPoint;
@@ -258,9 +264,12 @@ void Tracking::UpdateMapPointfeature(const vector<cv::DMatch> &vpointMatches)
 
             if (pMapPoint->mPosew.isZero())
             {
-                pMapPoint->mPosew = mpcamera->Camera2World(pcurPointFeature->mPoint3dw, mpcurrentFrame->Tcw.unit_quaternion(),
-                                                           mpcurrentFrame->Tcw.translation());
-//                cout << "use the current frame's observation to updae the MapPoint: " << pcurPointFeature->mPoint3dw.transpose() << endl;
+                if (!pcurPointFeature->mPoint3dw.isZero())
+                    pMapPoint->mPosew = mpcurrentFrame->Tcw.inverse()*pcurPointFeature->mPoint3dw;
+
+//                if (!pMapPoint->mPosew.isZero())
+//                    CHECK(fabs(pMapPoint->mPosew.minCoeff()) > 0.01);
+                cout << "use the current frame's observation to updae the MapPoint: " << pcurPointFeature->mPoint3dw.transpose() << endl;
             }
 
             mpcurrentFrame->mvpMapPoint.push_back(pMapPoint);
@@ -290,12 +299,19 @@ void Tracking::UpdateMapLinefeature(const vector<cv::DMatch> &vlineMatches)
         {
             MapLine *pMapLine = new MapLine;
             pMapLine->mID = countMapLine;
-            pMapLine->mPoseStartw = mpcamera->Camera2World(pLineFeature->mStartPoint3dw, mplastFrame->Tcw.unit_quaternion(),
-                                                           mplastFrame->Tcw.translation());
-            pMapLine->mPoseEndw = mpcamera->Camera2World(pLineFeature->mEndPoint3dw, mplastFrame->Tcw.unit_quaternion(),
-                                                         mplastFrame->Tcw.translation());
+
+            if (!pLineFeature->mStartPoint3dw.isZero())
+                pMapLine->mPoseStartw = mplastFrame->Tcw.inverse()*pLineFeature->mStartPoint3dw;
+            if (!pLineFeature->mEndPoint3dw.isZero())
+                pMapLine->mPoseEndw = mplastFrame->Tcw.inverse()*pLineFeature->mEndPoint3dw;
+
             pMapLine->mlpFrameinvert.push_back(mplastFrame);
             pMapLine->mmpLineFeature2D[mplastFrame->GetFrameID()] = pLineFeature;
+
+//            if (!pMapLine->mPoseStartw.isZero())
+//                CHECK(fabs(pMapLine->mPoseStartw.minCoeff()) > 0.01);
+//            if (!pMapLine->mPoseEndw.isZero())
+//                CHECK(fabs(pMapLine->mPoseEndw.minCoeff()) > 0.01);
 
             mplastFrame->mvpMapLine.push_back(pMapLine);
             pLineFeature->mpMapLine = pMapLine;
@@ -332,7 +348,7 @@ void Tracking::UpdateMapLinefeature(const vector<cv::DMatch> &vlineMatches)
             auto it = pMapLine->mmpLineFeature2D.find(mpcurrentFrame->GetFrameID());
             if (it != pMapLine->mmpLineFeature2D.end())
             {
-                LOG(ERROR) << "the point feature2d exist " << endl;
+                LOG(ERROR) << "the point feature2d doesn't exist " << endl;
             }
 
             pMapLine->mmpLineFeature2D[mpcurrentFrame->GetFrameID()] = pcurLineFeature;
@@ -340,19 +356,18 @@ void Tracking::UpdateMapLinefeature(const vector<cv::DMatch> &vlineMatches)
 
             if (pMapLine->mPoseStartw.isZero() || pMapLine->mPoseEndw.isZero())
             {
-//                cout << "use the current frame's observation to updae the MapLine: " << pcurLineFeature->mStartPoint3dw.transpose() << endl;
-//                cout << "use the current frame's observation to updae the MapLine: " << pcurLineFeature->mEndPoint3dw.transpose() << endl;
-
                 if (!pcurLineFeature->mStartPoint3dw.isZero())
                 {
-                    pMapLine->mPoseStartw =  mpcamera->Camera2World(pcurLineFeature->mStartPoint3dw, mpcurrentFrame->Tcw.unit_quaternion(),
-                                                                    mpcurrentFrame->Tcw.translation());
+                    pMapLine->mPoseStartw =  mpcurrentFrame->Tcw.inverse()*pcurLineFeature->mStartPoint3dw;
+                    cout << "use the current frame's observation to updae the MapLine: " << pcurLineFeature->mStartPoint3dw.transpose() << endl;
+//                    CHECK(fabs(pMapLine->mPoseStartw.minCoeff()) > 0.01);
                 }
 
                 if (!pcurLineFeature->mEndPoint3dw.isZero())
                 {
-                    pMapLine->mPoseEndw = mpcamera->Camera2World(pcurLineFeature->mEndPoint3dw, mpcurrentFrame->Tcw.unit_quaternion(),
-                                                                 mpcurrentFrame->Tcw.translation());
+                    pMapLine->mPoseEndw = mpcurrentFrame->Tcw.inverse()*pcurLineFeature->mEndPoint3dw;
+                    cout << "use the current frame's observation to updae the MapLine: " << pcurLineFeature->mEndPoint3dw.transpose() << endl;
+//                    CHECK(fabs(pMapLine->mPoseEndw.minCoeff()) > 0.01);
                 }
             }
 

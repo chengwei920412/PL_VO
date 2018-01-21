@@ -69,16 +69,16 @@ bool ReprojectionErrorSE3::Evaluate(double const *const *parameters, double *res
             Jse3.block<2,3>(0,0) = jacobian;
             Jse3.block<2,3>(0,3) = -jacobian*Converter::skew(p);
 
-            CHECK(fabs(Jse3.maxCoeff()) < 1e8);
-            CHECK(fabs(Jse3.minCoeff()) < 1e8);
+//            CHECK(fabs(Jse3.maxCoeff()) < 1e8);
+//            CHECK(fabs(Jse3.minCoeff()) < 1e8);
         }
         if(jacobians[1] != nullptr) // the jacobian for the camera pose optimization
         {
             Eigen::Map<Eigen::Matrix<double, 2, 3, Eigen::RowMajor> > Jpoint(jacobians[1]);
             Jpoint = jacobian * quaterd.toRotationMatrix();
 
-            CHECK(fabs(Jpoint.maxCoeff()) < 1e8);
-            CHECK(fabs(Jpoint.minCoeff()) < 1e8);
+//            CHECK(fabs(Jpoint.maxCoeff()) < 1e8);
+//            CHECK(fabs(Jpoint.minCoeff()) < 1e8);
         }
     }
 
@@ -99,8 +99,8 @@ bool ReprojectionLineErrorSE3::Evaluate(double const *const *parameters, double 
     Eigen::Vector2d err;
 
     // the MapLine in the camera coordinate
-//    cout << parameters[1][0] << " " << parameters[1][1] << " " << parameters[1][2] << endl;
-//    cout << parameters[2][0] << " " << parameters[2][1] << " " << parameters[2][2] << endl;
+//    cout << parameters[0][0] << " " << parameters[0][1] << " " << parameters[0][2] << " " << parameters[0][3] << endl;
+//    cout << parameters[0][4] << " " << parameters[0][5] << " " << parameters[0][6] << endl;
 //
 //    cout << "startpoint3d: " << endl << Startpoint3d << endl;
 //    cout << "endpoint3d: " << endl << Endpoint3d << endl;
@@ -152,8 +152,8 @@ bool ReprojectionLineErrorSE3::Evaluate(double const *const *parameters, double 
             Jse3.block<1, 3>(0, 3) = -jacobian.block<1, 3>(0, 0)*Converter::skew(Startpoint3dC);
             Jse3.block<1, 3>(1, 3) = -jacobian.block<1, 3>(1, 0)*Converter::skew(Endpoint3dC);
 
-            CHECK(fabs(Jse3.maxCoeff()) < 1e8);
-            CHECK(fabs(Jse3.minCoeff()) < 1e8);
+//            CHECK(fabs(Jse3.maxCoeff()) < 1e8);
+//            CHECK(fabs(Jse3.minCoeff()) < 1e8);
         }
 
         if(jacobians[1] != nullptr) // the jacobian for the camera pose optimization
@@ -163,8 +163,8 @@ bool ReprojectionLineErrorSE3::Evaluate(double const *const *parameters, double 
 
             Jpoint.block<1, 3>(0, 0) = jacobian.block<1, 3>(0 ,0)*quaterd.toRotationMatrix();
 
-            CHECK(fabs(Jpoint.maxCoeff()) < 1e8);
-            CHECK(fabs(Jpoint.minCoeff()) < 1e8);
+//            CHECK(fabs(Jpoint.maxCoeff()) < 1e8);
+//            CHECK(fabs(Jpoint.minCoeff()) < 1e8);
         }
 
         if (jacobians[2] != nullptr)
@@ -174,8 +174,8 @@ bool ReprojectionLineErrorSE3::Evaluate(double const *const *parameters, double 
 
             Jpoint.block<1, 3>(1, 0) = jacobian.block<1, 3>(1 ,0)*quaterd.toRotationMatrix();
 
-            CHECK(fabs(Jpoint.maxCoeff()) < 1e8);
-            CHECK(fabs(Jpoint.minCoeff()) < 1e8);
+//            CHECK(fabs(Jpoint.maxCoeff()) < 1e8);
+//            CHECK(fabs(Jpoint.minCoeff()) < 1e8);
         }
 
     }
@@ -329,7 +329,7 @@ void Optimizer::PoseOptimization(Frame *pFrame)
         if (pMapPoint->mPosew.isZero())
             continue;
 
-        if (pMapPoint->GetObservedNum() <= 2)
+        if (pMapPoint->GetObservedNum() < 2)
             continue;
 
         if (!pMapPoint->mmpPointFeature2D[frameID]->mbinlier)
@@ -354,7 +354,7 @@ void Optimizer::PoseOptimization(Frame *pFrame)
         if (pMapLine->mPoseStartw.isZero() || pMapLine->mPoseEndw.isZero())
             continue;
 
-        if (pMapLine->GetObservedNum() <= 2)
+        if (pMapLine->GetObservedNum() < 2)
             continue;
 
         if (!pMapLine->mmpLineFeature2D[frameID]->mbinlier)
@@ -383,7 +383,7 @@ void Optimizer::PoseOptimization(Frame *pFrame)
 //             << pMapLine->mPoseEndw.transpose() << endl;
     }
 
-//    RemoveOutliers(problem, 25);
+    RemoveOutliers(problem, 25);
 
     vector<double> vresiduals;
     vresiduals = GetReprojectionErrorNorms(problem);
@@ -394,11 +394,12 @@ void Optimizer::PoseOptimization(Frame *pFrame)
     }
 
     ceres::Solver::Options options;
-    options.num_threads = 4;
+//    options.num_threads = 4;
     options.linear_solver_type = ceres::DENSE_SCHUR;
     options.minimizer_progress_to_stdout = true;
     options.max_solver_time_in_seconds = 0.1;
 
+    cout << "pose optimization " << endl;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
 
@@ -488,7 +489,8 @@ void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc,
         if (!vpPointFeature2DLast[i]->mbinlier)
             continue;
 
-        vpPointFeature2DInliers.emplace_back(vpPointFeature2DLast[i]);
+        // the outliers are considered in the current frame, not in the last frame
+        vpPointFeature2DInliers.emplace_back(vpPointFeature2DCur[i]);
 
         ceres::CostFunction *costfunction = new ReprojectionErrorSE3(K(0, 0), K(1, 1), K(0, 2), K(1, 2),
                                                                      vpPointFeature2DCur[i]->mpixel[0], vpPointFeature2DCur[i]->mpixel[1]);
@@ -504,7 +506,8 @@ void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc,
         if (!vpLineFeature2DLast[i]->mbinlier)
             continue;
 
-        vpLineFeature2DInliers.emplace_back(vpLineFeature2DLast[i]);
+        // the outliers are considered in the current frame, not in the last frame
+        vpLineFeature2DInliers.emplace_back(vpLineFeature2DCur[i]);
 
         ceres::CostFunction *costFunction = new ReprojectionLineErrorSE3(K(0, 0), K(1, 1), K(0, 2), K(1, 2),
                                                                          vpLineFeature2DCur[i]->mStartpixel,
@@ -519,12 +522,13 @@ void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc,
     }
 
     ceres::Solver::Options options;
-    options.num_threads = 4;
+//    options.num_threads = 4;
     options.max_num_iterations = Config::maxIters();
     options.linear_solver_type = ceres::DENSE_SCHUR;
     options.minimizer_progress_to_stdout = true;
     options.max_solver_time_in_seconds = 0.1;
 
+    cout << "PnP optimization " << endl;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
 
@@ -552,6 +556,14 @@ void Optimizer::PnPResultOptimization(Frame *pFrame, Sophus::SE3 &PoseInc,
              << " Initial RMSE: " << sqrt(summary.initial_cost / summary.num_residuals) << endl
              << " Final RMSE: " << sqrt(summary.final_cost / summary.num_residuals) << endl
              << " Time (s): " << summary.total_time_in_seconds << endl;
+    }
+
+    vector<double> vresiduals;
+    vresiduals = GetReprojectionErrorNorms(problem);
+
+    for (auto residual : vresiduals)
+    {
+        cout << residual << endl;
     }
 
     vector<double> vPointResiduals, vLineResiduals;

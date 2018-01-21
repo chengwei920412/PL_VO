@@ -469,6 +469,7 @@ void Frame::UnprojectLineStereo(const cv::Mat &imageDepth, const vector<cv::DMat
 
             if (d1 > 0)
             {
+
                 startPoint3dw = mpCamera->Pixwl2World(Converter::toVector2d(startPointUn2f), Eigen::Quaterniond::Identity(),
                                                       Eigen::Vector3d(0, 0, 0), d1);
             }
